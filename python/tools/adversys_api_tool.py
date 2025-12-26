@@ -41,47 +41,34 @@ class AdversysAPIClient:
             os.getenv("ADVERSYS_API_PASSWORD") or 
             ""
         )
-        self.api_token = (
-            dotenv.get_dotenv_value("ADVERSYS_API_TOKEN") or 
-            os.getenv("ADVERSYS_API_TOKEN") or 
-            ""
-        )
         
         # Default timeout for requests (in seconds)
         self.timeout = 30
         
-        # Cache for the token
-        self._token = None
+        # Session for cookie-based auth
+        self.session = requests.Session()
+        self.csrf_token: Optional[str] = None
     
-    def _get_token(self) -> Optional[str]:
-        """Get or obtain API token"""
-        # If we have a pre-configured token, use it
-        if self.api_token:
-            return self.api_token
-        
-        # If we have a cached token, use it
-        if self._token:
-            return self._token
-        
-        # Try to login to get a token
-        if self.api_username and self.api_password:
-            try:
-                login_url = f"{self.base_url}/api/v1/auth/login"
-                resp = requests.post(
-                    login_url,
-                    data={"username": self.api_username, "password": self.api_password},
-                    timeout=self.timeout,
-                )
-                resp.raise_for_status()
-                token = (resp.json() or {}).get("access_token")
-                if token:
-                    self._token = token
-                    return token
-            except requests.RequestException as e:
-                PrintStyle().error(f"Failed to authenticate with Adversys API: {e}")
-                return None
-        
-        return None
+    def _ensure_session(self) -> None:
+        """Ensure we have a valid session cookie by logging in if needed."""
+        if not self.api_username or not self.api_password:
+            return
+        if self.session.cookies.get("adversys_session"):
+            if not self.csrf_token:
+                self.csrf_token = self.session.cookies.get("adversys_csrf")
+            return
+
+        try:
+            login_url = f"{self.base_url}/api/v1/auth/login"
+            resp = self.session.post(
+                login_url,
+                json={"username": self.api_username, "password": self.api_password},
+                timeout=self.timeout,
+            )
+            resp.raise_for_status()
+            self.csrf_token = self.session.cookies.get("adversys_csrf")
+        except requests.RequestException as e:
+            PrintStyle().error(f"Failed to authenticate with Adversys API: {e}")
     
     def request(
         self,
@@ -103,14 +90,16 @@ class AdversysAPIClient:
             Response object
         """
         url = f"{self.base_url}{endpoint}"
-        token = self._get_token()
-        
+        self._ensure_session()
         headers = {"Content-Type": "application/json"}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+        if method.upper() in ("POST", "PUT", "PATCH", "DELETE"):
+            if not self.csrf_token:
+                self.csrf_token = self.session.cookies.get("adversys_csrf")
+            if self.csrf_token:
+                headers["X-CSRF-Token"] = self.csrf_token
         
         try:
-            resp = requests.request(
+            resp = self.session.request(
                 method=method,
                 url=url,
                 json=json_data,
@@ -118,6 +107,21 @@ class AdversysAPIClient:
                 headers=headers,
                 timeout=self.timeout,
             )
+            if resp.status_code == 401:
+                # Retry once after re-auth
+                self.session.cookies.clear()
+                self.csrf_token = None
+                self._ensure_session()
+                if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
+                    headers["X-CSRF-Token"] = self.csrf_token
+                resp = self.session.request(
+                    method=method,
+                    url=url,
+                    json=json_data,
+                    params=params,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
             return resp
         except requests.RequestException as e:
             PrintStyle().error(f"API request failed: {e}")

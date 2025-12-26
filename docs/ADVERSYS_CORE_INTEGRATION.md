@@ -17,15 +17,14 @@ Delta connects to Adversys Core using the following environment variables (confi
 - **`ADVERSYS_API_URL`**: Base URL for the Adversys API (default: `http://api:8000`)
 - **`ADVERSYS_API_USERNAME`**: Service account username (default: `orchestrator-service`)
 - **`ADVERSYS_API_PASSWORD`**: Service account password
-- **`ADVERSYS_API_TOKEN`**: Optional pre-configured API token (if provided, skips login)
 
 ### Authentication
 
-The integration uses Bearer token authentication:
+The integration uses session cookie authentication:
 
-1. **Token-based**: If `ADVERSYS_API_TOKEN` is set, it's used directly
-2. **Username/Password**: If no token is provided, the client logs in via `/api/v1/auth/login` to obtain a token
-3. **Token Caching**: Tokens are cached in memory to avoid repeated logins
+1. **Username/Password**: The client logs in via `/api/v1/auth/login` to obtain a session cookie
+2. **Session Reuse**: Cookies are stored in a shared requests session
+3. **CSRF**: Unsafe requests include the `X-CSRF-Token` header from the CSRF cookie
 
 ## Core Components
 
@@ -33,12 +32,12 @@ The integration uses Bearer token authentication:
 
 Base HTTP client that handles:
 - Configuration from environment variables
-- Authentication (token retrieval and caching)
+- Authentication (session login + CSRF)
 - HTTP request methods (GET, POST, PUT, DELETE)
 - Error handling and response formatting
 
 **Key Methods:**
-- `_get_token()`: Obtains authentication token
+- `_ensure_session()`: Obtains authenticated session
 - `request()`: Makes authenticated API requests
 - `get()`, `post()`, `put()`, `delete()`: Convenience methods
 
