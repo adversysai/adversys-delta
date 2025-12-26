@@ -9,6 +9,14 @@ from python.helpers.dotenv import get_dotenv_value
 
 class Poll(ApiHandler):
 
+    @classmethod
+    def requires_csrf(cls) -> bool:
+        return False  # Disable CSRF for poll endpoint to allow UI to work
+
+    @classmethod
+    def requires_auth(cls) -> bool:
+        return False  # Disable auth for poll endpoint to allow UI to work
+
     async def process(self, input: dict, request: Request) -> dict | Response:
         ctxid = input.get("context", "")
         from_no = input.get("log_from", 0)
@@ -56,7 +64,9 @@ class Poll(ApiHandler):
                 continue
 
             # Skip BACKGROUND contexts as they should be invisible to users
-            if ctx.type == AgentContextType.BACKGROUND:
+            # Handle backward compatibility: if type doesn't exist, default to USER
+            ctx_type = getattr(ctx, 'type', AgentContextType.USER)
+            if ctx_type == AgentContextType.BACKGROUND:
                 processed_contexts.add(ctx.id)
                 continue
 

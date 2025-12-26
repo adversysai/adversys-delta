@@ -102,6 +102,16 @@ const model = {
       document.body.classList.add("light-mode");
     }
     localStorage.setItem("darkMode", value);
+    
+    // MODIFIED: Send theme change to parent window (if embedded in iframe)
+    // This enables theme synchronization between Delta iframe and main Adversys UI
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'theme-change-request',
+        darkMode: value,
+        theme: value ? 'dark' : 'light'
+      }, '*');
+    }
   },
 
   _applySpeech(value) {

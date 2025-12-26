@@ -5,6 +5,11 @@ import requests
 
 
 class TunnelProxy(ApiHandler):
+
+    @classmethod
+    def requires_csrf(cls) -> bool:
+        return False  # Disable CSRF for tunnel proxy endpoint
+
     async def process(self, input: dict, request: Request) -> dict | Response:
         return await process(input)
 

@@ -62,7 +62,7 @@ class Message(ApiHandler):
         attachment_paths = data.get("attachment_paths", [])
 
         # Store attachments in agent data
-        # context.agent0.set_data("attachments", attachment_paths)
+        # context.Delta.set_data("attachments", attachment_paths)
 
         # Prepare attachment filenames for logging
         attachment_filenames = (

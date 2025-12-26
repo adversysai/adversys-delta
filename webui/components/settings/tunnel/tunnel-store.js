@@ -42,7 +42,7 @@ const model = {
 
   async checkTunnelStatus() {
     try {
-      const response = await fetchApi("/tunnel_proxy", {
+      const response = await globalThis.fetchApi("/tunnel_proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -67,7 +67,7 @@ const model = {
 
         if (storedTunnelUrl) {
           // Use the stored URL but verify it's still valid
-          const verifyResponse = await fetchApi("/tunnel_proxy", {
+          const verifyResponse = await globalThis.fetchApi("/tunnel_proxy", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -122,7 +122,7 @@ const model = {
 
       try {
         // First stop any existing tunnel
-        const stopResponse = await fetchApi("/tunnel_proxy", {
+        const stopResponse = await globalThis.fetchApi("/tunnel_proxy", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -156,7 +156,7 @@ const model = {
   async generateLink() {
     // First check if authentication is enabled
     try {
-      const authCheckResponse = await fetchApi("/settings_get");
+      const authCheckResponse = await globalThis.fetchApi("/settings_get");
       const authData = await authCheckResponse.json();
 
       // Find the auth_login and auth_password in the settings
@@ -188,9 +188,9 @@ const model = {
       // If no authentication is set, warn the user
       if (!hasAuth) {
         const proceed = confirm(
-          "WARNING: No authentication is configured for your Agent Zero instance.\n\n" +
+          "WARNING: No authentication is configured for your Delta instance.\n\n" +
             "Creating a public tunnel without authentication means anyone with the URL " +
-            "can access your Agent Zero instance.\n\n" +
+            "can access your Delta instance.\n\n" +
             "It is recommended to set up authentication in the Settings > Authentication section " +
             "before creating a public tunnel.\n\n" +
             "Do you want to proceed anyway?"
@@ -219,7 +219,7 @@ const model = {
 
     try {
       // Call the backend API to create a tunnel
-      const response = await fetchApi("/tunnel_proxy", {
+      const response = await globalThis.fetchApi("/tunnel_proxy", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -257,7 +257,7 @@ const model = {
 
         // Check if tunnel is running now
         try {
-          const statusResponse = await fetchApi("/tunnel_proxy", {
+          const statusResponse = await globalThis.fetchApi("/tunnel_proxy", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -324,7 +324,7 @@ const model = {
 
       try {
         // Call the backend to stop the tunnel
-        const response = await fetchApi("/tunnel_proxy", {
+        const response = await globalThis.fetchApi("/tunnel_proxy", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

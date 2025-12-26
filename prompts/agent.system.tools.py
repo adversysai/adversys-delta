@@ -15,8 +15,20 @@ class CallSubordinate(VariablesPlugin):
             for backup_dir in backup_dirs:
                 folders.append(files.get_abs_path(backup_dir))
 
-        # collect all tool instruction files
-        prompt_files = files.get_unique_filenames_in_dirs(folders, "agent.system.tool.*.md")
+        # Also search in subdirectories (like adversys/)
+        # Get all subdirectories in the prompt folders
+        all_folders = list(folders)
+        for folder_path in folders:
+            try:
+                for item in os.listdir(folder_path):
+                    item_path = os.path.join(folder_path, item)
+                    if os.path.isdir(item_path):
+                        all_folders.append(item_path)
+            except Exception:
+                pass
+
+        # collect all tool instruction files from all folders (including subdirectories)
+        prompt_files = files.get_unique_filenames_in_dirs(all_folders, "agent.system.tool.*.md")
         
         # load tool instructions
         tools = []

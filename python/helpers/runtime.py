@@ -33,6 +33,9 @@ def initialize():
     parser.add_argument(
         "--development", type=bool, default=False, help="Development mode"
     )
+    parser.add_argument(
+        "--dockerized", action="store_true", default=False, help="Running in Docker container"
+    )
 
     known, unknown = parser.parse_known_args()
     args = vars(known)

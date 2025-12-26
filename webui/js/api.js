@@ -44,8 +44,14 @@ export async function fetchApi(url, request) {
     // add the CSRF token to the headers
     finalRequest.headers["X-CSRF-Token"] = token;
 
+    // prepend base path to absolute URLs if base path is set
+    let finalUrl = url;
+    if (window.__agentZeroBasePath && url.startsWith('/')) {
+      finalUrl = window.__agentZeroBasePath + url;
+    }
+
     // perform the fetch with the updated request
-    const response = await fetch(url, finalRequest);
+    const response = await fetch(finalUrl, finalRequest);
 
     // check if there was an CSRF error
     if (response.status === 403 && retry) {
@@ -79,7 +85,8 @@ let csrfToken = null;
  */
 async function getCsrfToken() {
   if (csrfToken) return csrfToken;
-  const response = await fetch("/csrf_token", {
+  const csrfUrl = window.__agentZeroBasePath ? window.__agentZeroBasePath + "/csrf_token" : "/csrf_token";
+  const response = await fetch(csrfUrl, {
     credentials: "same-origin",
   });
   if (response.redirected && response.url.endsWith("/login")) {

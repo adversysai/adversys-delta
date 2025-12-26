@@ -135,19 +135,25 @@ class CodeExecution(Tool):
         # initialize local or remote interactive shell interface for session 0 if needed
         if session is not None and session not in shells:
             if self.agent.config.code_exec_ssh_enabled:
-                pswd = (
-                    self.agent.config.code_exec_ssh_pass
-                    if self.agent.config.code_exec_ssh_pass
-                    else await rfc_exchange.get_root_password()
-                )
-                shell = SSHInteractiveSession(
-                    self.agent.context.log,
-                    self.agent.config.code_exec_ssh_addr,
-                    self.agent.config.code_exec_ssh_port,
-                    self.agent.config.code_exec_ssh_user,
-                    pswd,
-                    cwd=self.get_cwd(),
-                )
+                # Check if SSH target is localhost/127.0.0.1 - if so, use local execution instead
+                ssh_addr = self.agent.config.code_exec_ssh_addr
+                if ssh_addr in ["localhost", "127.0.0.1", "::1"]:
+                    print(f"DEBUG: SSH target is localhost ({ssh_addr}), using local execution instead")
+                    shell = LocalInteractiveSession(cwd=self.get_cwd())
+                else:
+                    pswd = (
+                        self.agent.config.code_exec_ssh_pass
+                        if self.agent.config.code_exec_ssh_pass
+                        else await rfc_exchange.get_root_password()
+                    )
+                    shell = SSHInteractiveSession(
+                        self.agent.context.log,
+                        self.agent.config.code_exec_ssh_addr,
+                        self.agent.config.code_exec_ssh_port,
+                        self.agent.config.code_exec_ssh_user,
+                        pswd,
+                        cwd=self.get_cwd(),
+                    )
             else:
                 shell = LocalInteractiveSession(cwd=self.get_cwd())
 
@@ -476,8 +482,24 @@ class CodeExecution(Tool):
         if not project_name:
             return None
         project_path = projects.get_project_folder(project_name)
-        normalized = files.normalize_a0_path(project_path)
-        return normalized
+        
+        # Check if project directory exists, if not, create it or fallback to /app
+        import os
+        if not os.path.exists(project_path):
+            # Try to create the directory structure
+            try:
+                os.makedirs(project_path, exist_ok=True)
+            except Exception:
+                # If creation fails, fallback to /app (base directory)
+                return "/app"
+        
+        # Verify the path exists after creation attempt
+        if not os.path.exists(project_path):
+            return "/app"
+        
+        # Return the actual filesystem path, not the normalized /a0/ path
+        # The subprocess needs the real directory path, not the virtualized one
+        return project_path
         
 
         

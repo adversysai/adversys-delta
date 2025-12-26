@@ -7,16 +7,14 @@
 </head>
 
 <body>
+    <!-- MODIFIED: Logo image removed for custom branding -->
+    <!-- Original logo was: <div class="welcome-logo-container"><img src="./public/darkSymbol.svg" class="welcome-logo" /></div> -->
     <div x-data x-show="$store.welcomeStore && $store.welcomeStore.isVisible">
         <template x-if="$store.welcomeStore">
             <div x-data="$store.welcomeStore" class="welcome-container">
-                <!-- Agent Zero Logo -->
-                <div class="welcome-logo-container">
-                    <img src="./public/darkSymbol.svg" alt="Agent Zero Logo" class="welcome-logo" />
-                </div>
-
                 <!-- Welcome Title -->
-                <h1 class="welcome-title">Welcome to Agent Zero</h1>
+                <!-- Note: "Delta" text will be replaced with "Delta" by branding script during Docker build -->
+                <h1 class="welcome-title">Welcome to Delta</h1>
                 <p class="welcome-subtitle">
                     Start a new conversation or explore the features below.
                 </p>
@@ -49,21 +47,7 @@
                         <span class="material-symbols-outlined welcome-action-icon">settings</span>
                         <h3 class="welcome-action-title">Settings</h3>
                         <p class="welcome-action-description">
-                            Configure Agent Zero
-                        </p>
-                    </div>
-                    <div class="welcome-action-card" @click="executeAction('website')">
-                        <span class="material-symbols-outlined welcome-action-icon">language</span>
-                        <h3 class="welcome-action-title">Visit Website</h3>
-                        <p class="welcome-action-description">
-                            Learn more about Agent Zero
-                        </p>
-                    </div>
-                    <div class="welcome-action-card" @click="executeAction('github')">
-                        <span class="material-symbols-outlined welcome-action-icon">code</span>
-                        <h3 class="welcome-action-title">Visit GitHub</h3>
-                        <p class="welcome-action-description">
-                            View source code and documentation
+                            Configure Delta
                         </p>
                     </div>
                 </div>
@@ -72,6 +56,7 @@
     </div>
 
     <style>
+        /* MODIFIED: Removed welcome-logo-container and welcome-logo CSS styles for custom branding */
         /* Welcome Screen Styles */
         .welcome-container {
             display: flex;
@@ -85,31 +70,10 @@
             min-height: 100vh;
         }
 
-        /* Welcome container styles */
-        .welcome-logo-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .welcome-logo {
-            width: 7rem;
-            height: 7rem;
-        }
-
-        /* Themes adjustments for logo */
-        .light-mode .welcome-logo {
-            filter: invert(0.5);
-        }
-
-        .dark-mode .welcome-logo {
-            filter: invert(0.8);
-        }
-
         .welcome-title {
             font-size: 2rem;
             font-weight: 400;
-            margin: var(--spacing-xs) 0 0 0;
+            margin: var(--spacing-lg) 0 0 0;
             color: var(--color-text);
         }
 
@@ -127,9 +91,9 @@
 
         .welcome-actions {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 1.2rem;
-            max-width: 520px;
+            max-width: 680px;
             width: 100%;
             margin: 1.5rem 0;
         }
@@ -196,18 +160,9 @@
                 padding-top: 3rem;
             }
 
-            .welcome-logo {
-                width: 5rem;
-                height: 5rem;
-            }
-
-            .welcome-logo-container {
-                margin-top: 2rem;
-            }
-
             .welcome-title {
                 font-size: 1.5rem;
-                margin: 0 !important;
+                margin: var(--spacing-md) 0 0 0 !important;
             }
 
             .welcome-subtitle {

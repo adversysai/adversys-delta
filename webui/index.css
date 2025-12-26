@@ -105,10 +105,30 @@ html {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  position: fixed;
+  /* Use relative positioning for iframe compatibility */
+  position: relative;
   -webkit-font-smoothing: antialiased; /* Improve font rendering */
   -moz-osx-font-smoothing: grayscale; /* Improve font rendering */
 }
+
+/* MODIFIED: Force no scrolling for iframe embedding - but allow internal elements to scroll */
+/* This allows Delta to be embedded in an iframe within the Adversys UI */
+body, html {
+  overflow: hidden !important;
+  height: 100%;
+  position: relative;
+}
+
+/* MODIFIED: Allow chat history to scroll - removed overflow-y: hidden to enable scrolling */
+/* #chat-history {
+  overflow-y: hidden !important;
+  max-height: 100% !important;
+} */
+
+.message, .chat-container {
+  overflow: hidden !important;
+}
+
 
 body {
   overscroll-behavior: none;
@@ -162,11 +182,13 @@ img {
   width: 100%;
   flex-direction: column;
   flex-grow: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   -webkit-transition: margin-left var(--transition-speed) ease-in-out;
   transition: margin-left var(--transition-speed) ease-in-out;
 }
 
-/* Scrollbar styles for right panel */
+/* MODIFIED: Scrollbar styles for right panel - custom styling for iframe embedding */
 #right-panel.expanded {
   margin-left: 0;
 }

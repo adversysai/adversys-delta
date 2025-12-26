@@ -99,7 +99,9 @@ async def synthesize_sentences(sentences: list[str]):
 
 
 async def _synthesize_sentences(sentences: list[str]):
-    await _preload()
+    # Only preload if pipeline doesn't exist
+    if not _pipeline:
+        await _preload()
 
     combined_audio = []
 

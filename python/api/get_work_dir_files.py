@@ -10,12 +10,14 @@ class GetWorkDirFiles(ApiHandler):
 
     async def process(self, input: dict, request: Request) -> dict | Response:
         current_path = request.args.get("path", "")
-        if current_path == "$WORK_DIR":
-            # if runtime.is_development():
-            #     current_path = "work_dir"
-            # else:
-            #     current_path = "root"
-            current_path = "/a0"
+        # Normalize: strip whitespace and slashes
+        if current_path:
+            current_path = current_path.strip().strip("/")
+        
+        # Normalize special paths: "$WORK_DIR" or "root" (case-insensitive) mean empty path
+        if current_path.upper() == "$WORK_DIR" or current_path.lower() == "root":
+            # Default to empty path (will use base_dir from FileBrowser, which is /app)
+            current_path = ""
 
         # browser = FileBrowser()
         # result = browser.get_files(current_path)

@@ -104,6 +104,7 @@ embedding:
   ollama:
     name: Ollama
     litellm_provider: ollama
+
   openai:
     name: OpenAI
     litellm_provider: openai

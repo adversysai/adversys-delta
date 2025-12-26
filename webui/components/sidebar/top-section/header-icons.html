@@ -5,6 +5,8 @@
   </script>
 </head>
 <body>
+  <!-- MODIFIED: Logo image and container removed for custom branding -->
+  <!-- Original logo was in <div id="logo-container"> with <img src="./public/splash.jpg"> -->
   <div class="icons-section" id="hide-button" x-data>
     <!-- Sidebar Toggle Button -->
     <button id="toggle-sidebar" class="toggle-sidebar-button" @click="$store.sidebar.toggle()" aria-label="Toggle Sidebar" aria-expanded="false">
@@ -16,16 +18,12 @@
       </span>
     </button>
 
-    <div id="logo-container">
-      <a href="https://github.com/agent0ai/agent-zero" target="_blank" rel="noopener noreferrer">
-        <img src="./public/splash.jpg" alt="a0" width="22" height="22">
-      </a>
-    </div>
   </div>
 
 
   <style>
-    /* Sidebar toggle button + logo container (migrated) */
+    /* MODIFIED: Removed logo-container and logo-related CSS styles for custom branding */
+    /* Sidebar toggle button */
     .toggle-sidebar-button {
       height: 2.6rem;
       width: 2.6rem;
@@ -48,26 +46,9 @@
     #sidebar-hamburger-svg { -webkit-transition: all var(--transition-speed) ease; transition: all var(--transition-speed) ease; }
     .toggle-sidebar-button:active #sidebar-hamburger-svg { -webkit-transform: scaleY(0.8); transform: scaleY(0.8); }
 
-    #logo-container {
-      display: -webkit-flex;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: fixed;
-      left: 4.6rem;
-      top: var(--spacing-md);
-      z-index: 1004;
-      -webkit-transition: margin-left var(--transition-speed) ease-in-out;
-      transition: margin-left var(--transition-speed) ease-in-out;
-    }
-    #logo-container a { color: inherit; text-decoration: none; }
-    #logo-container img { border-radius: var(--spacing-xs); width: auto; height: 2.6rem; -webkit-transition: filter 0.3s ease; transition: filter 0.3s ease; }
-
-    .light-mode #logo-container img { -webkit-filter: invert(100%) grayscale(100%); filter: invert(100%) grayscale(100%); }
 
     @media (max-width: 768px) {
       .toggle-sidebar-button { position: fixed; left: var(--spacing-md); z-index: 1004; }
-      #logo-container { -webkit-transition: all 0.3s ease; transition: all 0.3s ease; z-index: 1004; }
     }
   </style>
 </body>

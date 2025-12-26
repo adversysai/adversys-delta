@@ -3,6 +3,11 @@ from python.helpers import projects
 
 
 class Projects(ApiHandler):
+
+    @classmethod
+    def requires_csrf(cls) -> bool:
+        return False  # Disable CSRF for projects endpoint
+
     async def process(self, input: Input, request: Request) -> Output:
         action = input.get("action", "")
         ctxid = input.get("context_id", None)

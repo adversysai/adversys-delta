@@ -1,15 +1,15 @@
-import * as msgs from "/js/messages.js";
-import * as api from "/js/api.js";
-import * as css from "/js/css.js";
-import { sleep } from "/js/sleep.js";
-import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
-import { store as speechStore } from "/components/chat/speech/speech-store.js";
-import { store as notificationStore } from "/components/notifications/notification-store.js";
-import { store as preferencesStore } from "/components/sidebar/bottom/preferences/preferences-store.js";
-import { store as inputStore } from "/components/chat/input/input-store.js";
-import { store as chatsStore } from "/components/sidebar/chats/chats-store.js";
-import { store as tasksStore } from "/components/sidebar/tasks/tasks-store.js";
-import { store as chatTopStore } from "/components/chat/top-section/chat-top-store.js";
+import * as msgs from "./js/messages.js";
+import * as api from "./js/api.js";
+import * as css from "./js/css.js";
+import { sleep } from "./js/sleep.js";
+import { store as attachmentsStore } from "./components/chat/attachments/attachmentsStore.js";
+import { store as speechStore } from "./components/chat/speech/speech-store.js";
+import { store as notificationStore } from "./components/notifications/notification-store.js";
+import { store as preferencesStore } from "./components/sidebar/bottom/preferences/preferences-store.js";
+import { store as inputStore } from "./components/chat/input/input-store.js";
+import { store as chatsStore } from "./components/sidebar/chats/chats-store.js";
+import { store as tasksStore } from "./components/sidebar/tasks/tasks-store.js";
+import { store as chatTopStore } from "./components/chat/top-section/chat-top-store.js";
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 
@@ -578,8 +578,32 @@ async function startPolling() {
   const longInterval = 250;
   const shortIntervalPeriod = 100;
   let shortIntervalCount = 0;
+  let pollingTimeout = null;
+  let isTabVisible = !document.hidden;
+
+  // Pause polling when tab is hidden, resume when visible
+  const handleVisibilityChange = () => {
+    isTabVisible = !document.hidden;
+    if (isTabVisible) {
+      // Tab became visible, resume polling immediately
+      _doPoll();
+    } else {
+      // Tab is hidden, clear any pending polls
+      if (pollingTimeout) {
+        clearTimeout(pollingTimeout);
+        pollingTimeout = null;
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   async function _doPoll() {
+    // Don't poll if tab is hidden
+    if (!isTabVisible) {
+      return;
+    }
+
     let nextInterval = longInterval;
 
     try {
@@ -591,14 +615,28 @@ async function startPolling() {
       console.error("Error:", error);
     }
 
-    // Call the function again after the selected interval
-    setTimeout(_doPoll.bind(this), nextInterval);
+    // Only schedule next poll if tab is still visible
+    if (isTabVisible) {
+      pollingTimeout = setTimeout(_doPoll.bind(this), nextInterval);
+    }
   }
 
   _doPoll();
 }
 
 // All initializations and event listeners are now consolidated here
+// MODIFIED: Listen for theme changes from parent window (if embedded in iframe)
+// This enables theme synchronization between main Adversys UI and Delta iframe
+window.addEventListener("message", function (event) {
+  // Only accept messages with the expected structure
+  if (event.data && event.data.type === "theme-change") {
+    const darkMode = event.data.darkMode !== false; // Default to true if not specified
+    if (preferencesStore) {
+      preferencesStore.darkMode = darkMode;
+    }
+  }
+});
+
 document.addEventListener("DOMContentLoaded", function () {
   // Assign DOM elements to variables now that the DOM is ready
   leftPanel = document.getElementById("left-panel");
@@ -624,7 +662,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /*
- * A0 Chat UI
+ * Delta Chat UI
  *
  * Unified sidebar layout:
  * - Both Chats and Tasks lists are always visible in a vertical layout

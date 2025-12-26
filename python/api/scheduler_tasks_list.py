@@ -6,6 +6,11 @@ from python.helpers.localization import Localization
 
 
 class SchedulerTasksList(ApiHandler):
+
+    @classmethod
+    def requires_csrf(cls) -> bool:
+        return False  # Disable CSRF for scheduler tasks list endpoint
+
     async def process(self, input: Input, request: Request) -> Output:
         """
         List all tasks in the scheduler with their types

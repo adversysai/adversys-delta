@@ -43,4 +43,5 @@ uv pip install -r /git/agent-zero/requirements2.txt
 bash /ins/install_playwright.sh "$@"
 
 # Preload A0
-python /git/agent-zero/preload.py --dockerized=true
+# Note: --dockerized is a boolean flag (store_true), so no =true needed
+python /git/agent-zero/preload.py --dockerized

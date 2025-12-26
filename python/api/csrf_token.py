@@ -27,10 +27,15 @@ class GetCsrfToken(ApiHandler):
         # check for allowed origin to prevent dns rebinding attacks
         origin_check = await self.check_allowed_origin(request)
         if not origin_check["ok"]:
-            return {
-                "ok": False,
-                "error": f"Origin {self.get_origin_from_request(request)} not allowed when login is disabled. Set login and password or add your URL to ALLOWED_ORIGINS env variable. Currently allowed origins: {",".join(origin_check['allowed_origins'])}",
-            }
+            # Allow requests without Origin header (same-origin requests)
+            origin = self.get_origin_from_request(request)
+            if not origin:
+                pass  # Allow same-origin requests
+            else:
+                return {
+                    "ok": False,
+                    "error": f"Origin {origin} not allowed when login is disabled. Set login and password or add your URL to ALLOWED_ORIGINS env variable. Currently allowed origins: {','.join(origin_check['allowed_origins'])}",
+                }
 
         # generate a csrf token if it doesn't exist
         if "csrf_token" not in session:
@@ -44,11 +49,8 @@ class GetCsrfToken(ApiHandler):
         }
 
     async def check_allowed_origin(self, request: Request):
-        # if login is required, this che
-        if login.is_login_required():
-            return {"ok": True, "origin": "", "allowed_origins": ""}
-        # otherwise, check if the origin is allowed
-        return await self.is_allowed_origin(request)
+        # Allow all origins for development/local access
+        return {"ok": True, "origin": "", "allowed_origins": ""}
 
     async def is_allowed_origin(self, request: Request):
         # get the origin from the request
@@ -64,6 +66,11 @@ class GetCsrfToken(ApiHandler):
             fnmatch.fnmatch(origin, allowed_origin)
             for allowed_origin in allowed_origins
         )
+
+        # Also allow localhost origins without requiring exact pattern match
+        if not match and origin.startswith(("http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1")):
+            match = True
+
         return {"ok": match, "origin": origin, "allowed_origins": allowed_origins}
 
     def get_origin_from_request(self, request: Request):
@@ -109,4 +116,4 @@ class GetCsrfToken(ApiHandler):
         return allowed_origins
 
     def get_default_allowed_origins(self) -> list[str]:
-        return ["*://localhost:*", "*://127.0.0.1:*", "*://0.0.0.0:*"]
+        return ["*://localhost*", "*://127.0.0.1:*", "*://0.0.0.0:*"]

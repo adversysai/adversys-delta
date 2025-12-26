@@ -17,7 +17,7 @@ from typing import (
 from litellm import completion, acompletion, embedding
 import litellm
 import openai
-from litellm.types.utils import ModelResponse
+# from litellm.types.utils import ModelResponse  # Not available in this version
 
 from python.helpers import dotenv
 from python.helpers import settings, dirty_json
@@ -307,7 +307,52 @@ class LiteLLMChatWrapper(SimpleChatModel):
         model_config: Optional[ModelConfig] = None,
         **kwargs: Any,
     ):
-        model_value = f"{provider}/{model}"
+        # Normalize provider to lowercase for comparison
+        provider_lower = provider.lower()
+        
+        # Check if this is a HuggingFace inference endpoint
+        # Only treat as HuggingFace if provider is explicitly "huggingface" OR api_base indicates HuggingFace
+        api_base = kwargs.get("api_base") or (model_config.api_base if model_config else None)
+        is_huggingface_endpoint = (
+            provider_lower == "huggingface" or
+            (api_base and ("huggingface" in api_base.lower() or "hf.co" in api_base.lower() or "hf-inference" in api_base.lower()))
+        )
+        
+        # For HuggingFace inference endpoints hosting Gemini models, LiteLLM requires
+        # the format "huggingface/gemini/gemini-2.5-flash"
+        if is_huggingface_endpoint:
+            # If model already contains "/", it might already have structure (e.g., "gemini/gemini-2.5-flash")
+            if "/" in model:
+                # Check if it already starts with "huggingface/" (case-insensitive)
+                if model.lower().startswith("huggingface/"):
+                    model_value = model
+                else:
+                    # Model has structure like "gemini/gemini-2.5-flash", prepend "huggingface/"
+                    model_value = f"huggingface/{model}"
+            # If model starts with "gemini" (e.g., "gemini-2.5-flash"), add "gemini/" prefix
+            elif model.lower().startswith("gemini"):
+                model_value = f"huggingface/gemini/{model}"
+            else:
+                # Other models, use standard format
+                model_value = f"huggingface/{model}"
+        else:
+            # For other providers, use standard format
+            # Special handling for Gemini: if provider is "gemini", use gemini/ prefix
+            # LiteLLM requires the provider prefix in the model name to detect the provider
+            if provider_lower == "gemini":
+                # For Gemini, LiteLLM requires format: gemini/gemini-2.5-flash
+                # This allows LiteLLM to detect the provider from the model name
+                if model.lower().startswith("gemini/"):
+                    model_value = model  # Already has prefix
+                else:
+                    model_value = f"gemini/{model}"  # Add gemini/ prefix
+            elif "/" in model and not model.lower().startswith(f"{provider_lower}/"):
+                # Model already has a prefix, use as-is
+                model_value = model
+            else:
+                # Standard format: provider/model
+                model_value = f"{provider}/{model}"
+        
         super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
         # Set A0 model config as instance attribute after parent init
         self.a0_model_conf = model_config
@@ -832,8 +877,8 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
     # for openrouter add app reference
     if provider_name == "openrouter":
         kwargs["extra_headers"] = {
-            "HTTP-Referer": "https://agent-zero.ai",
-            "X-Title": "Agent Zero",
+            "HTTP-Referer": "https://delta.ai",
+            "X-Title": "Delta",
         }
 
     # remap other to openai for litellm

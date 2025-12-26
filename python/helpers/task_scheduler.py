@@ -804,7 +804,7 @@ class TaskScheduler:
                 # This is critical for the polling mechanism to find and stream logs
                 # Dict operations are atomic
                 # AgentContext._contexts[context.id] = context
-                agent = context.streaming_agent or context.agent0
+                agent = context.streaming_agent or context.Delta
 
                 # Prepare attachment filenames for logging
                 attachment_filenames = []

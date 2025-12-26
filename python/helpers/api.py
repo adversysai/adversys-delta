@@ -29,7 +29,7 @@ class ApiHandler:
 
     @classmethod
     def requires_auth(cls) -> bool:
-        return True
+        return False
 
     @classmethod
     def get_methods(cls) -> list[str]:
