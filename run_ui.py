@@ -37,6 +37,8 @@ BASE_PATH = os.getenv("AGENT_ZERO_BASE_PATH", "").rstrip("/")
 if BASE_PATH and not BASE_PATH.startswith("/"):
     BASE_PATH = "/" + BASE_PATH
 
+DISABLE_SERVICE_WORKER = os.getenv("DELTA_DISABLE_SERVICE_WORKER", "").strip().lower() in ("1", "true", "yes", "on")
+
 # Debug: Log base path (can be removed later)
 if BASE_PATH:
     import logging
@@ -428,6 +430,7 @@ async def serve_index():
     <script>
         // Set base path for JavaScript modules (components.js uses this)
         window.__agentZeroBasePath = "{BASE_PATH}";
+        window.__disableServiceWorker = {str(DISABLE_SERVICE_WORKER).lower()};
     </script>
 '''
         index = index.replace("</head>", base_path_script + "</head>")

@@ -1243,7 +1243,7 @@
 
     <!-- Register Service Worker for offline support and caching -->
     <script>
-        if ('serviceWorker' in navigator) {
+        if (!window.__disableServiceWorker && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('js/sw.js').then(registration => {
                     console.log('SW registered: ', registration);
