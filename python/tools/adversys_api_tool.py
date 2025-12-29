@@ -7,6 +7,7 @@ It provides a base tool for making authenticated API calls to Adversys Core.
 This is NOT part of the upstream Delta codebase.
 """
 import os
+import time
 import requests
 from typing import Optional, Dict, Any
 from python.helpers.tool import Tool, Response
@@ -48,15 +49,18 @@ class AdversysAPIClient:
         # Session for cookie-based auth
         self.session = requests.Session()
         self.csrf_token: Optional[str] = None
+        self.auth_backoff_until = 0.0
     
-    def _ensure_session(self) -> None:
+    def _ensure_session(self) -> bool:
         """Ensure we have a valid session cookie by logging in if needed."""
         if not self.api_username or not self.api_password:
-            return
+            return False
         if self.session.cookies.get("adversys_session"):
             if not self.csrf_token:
                 self.csrf_token = self.session.cookies.get("adversys_csrf")
-            return
+            return True
+        if time.time() < self.auth_backoff_until:
+            return False
 
         try:
             login_url = f"{self.base_url}/api/v1/auth/login"
@@ -65,10 +69,17 @@ class AdversysAPIClient:
                 json={"username": self.api_username, "password": self.api_password},
                 timeout=self.timeout,
             )
+            if resp.status_code == 429:
+                self.auth_backoff_until = time.time() + 60
+                PrintStyle().error("Auth rate-limited (429). Backing off before retrying.")
+                return False
             resp.raise_for_status()
             self.csrf_token = self.session.cookies.get("adversys_csrf")
+            return True
         except requests.RequestException as e:
+            self.auth_backoff_until = time.time() + 30
             PrintStyle().error(f"Failed to authenticate with Adversys API: {e}")
+            return False
     
     def request(
         self,
@@ -111,17 +122,17 @@ class AdversysAPIClient:
                 # Retry once after re-auth
                 self.session.cookies.clear()
                 self.csrf_token = None
-                self._ensure_session()
-                if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
-                    headers["X-CSRF-Token"] = self.csrf_token
-                resp = self.session.request(
-                    method=method,
-                    url=url,
-                    json=json_data,
-                    params=params,
-                    headers=headers,
-                    timeout=self.timeout,
-                )
+                if self._ensure_session():
+                    if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
+                        headers["X-CSRF-Token"] = self.csrf_token
+                    resp = self.session.request(
+                        method=method,
+                        url=url,
+                        json=json_data,
+                        params=params,
+                        headers=headers,
+                        timeout=self.timeout,
+                    )
             return resp
         except requests.RequestException as e:
             PrintStyle().error(f"API request failed: {e}")
