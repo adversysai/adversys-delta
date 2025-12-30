@@ -444,6 +444,11 @@ def run():
     from werkzeug.serving import make_server
     from werkzeug.middleware.dispatcher import DispatcherMiddleware
     from a2wsgi import ASGIMiddleware
+    import logging
+    
+    # Silence Werkzeug development server warning
+    # This is the official Agent Zero setup, and it's fine behind Nginx
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
     PrintStyle().print("Starting server...")
 
