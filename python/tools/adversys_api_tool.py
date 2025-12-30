@@ -46,8 +46,27 @@ class AdversysAPIClient:
         # Default timeout for requests (in seconds)
         self.timeout = 30
         
+        # SSL verification - use CA bundle if provided (for self-signed certs)
+        self.verify_ssl = True
+        ca_bundle = (
+            dotenv.get_dotenv_value("REQUESTS_CA_BUNDLE") or 
+            os.getenv("REQUESTS_CA_BUNDLE") or
+            dotenv.get_dotenv_value("SSL_CERT_FILE") or
+            os.getenv("SSL_CERT_FILE")
+        )
+        if ca_bundle:
+            if os.path.exists(ca_bundle):
+                self.verify_ssl = ca_bundle
+                # CA bundle includes system CAs + self-signed Adversys cert
+            else:
+                PrintStyle().warning(f"CA bundle file specified but not found: {ca_bundle}. SSL verification may fail for self-signed certificates.")
+        elif os.getenv("REQUESTS_CA_BUNDLE") == "" or os.getenv("SSL_CERT_FILE") == "":
+            # Explicitly disabled
+            self.verify_ssl = False
+        
         # Session for cookie-based auth
         self.session = requests.Session()
+        self.session.verify = self.verify_ssl
         self.csrf_token: Optional[str] = None
         self.auth_backoff_until = 0.0
     
@@ -55,10 +74,17 @@ class AdversysAPIClient:
         """Ensure we have a valid session cookie by logging in if needed."""
         if not self.api_username or not self.api_password:
             return False
-        if self.session.cookies.get("adversys_session"):
+        
+        # Check if we have a session cookie and it's likely still valid
+        # We'll validate it by making a test request if we're unsure
+        session_cookie = self.session.cookies.get("adversys_session")
+        if session_cookie:
             if not self.csrf_token:
                 self.csrf_token = self.session.cookies.get("adversys_csrf")
+            # Cookie exists - assume it's valid (will be validated on first API call)
             return True
+        
+        # No session cookie, need to login
         if time.time() < self.auth_backoff_until:
             return False
 
@@ -68,15 +94,18 @@ class AdversysAPIClient:
                 login_url,
                 json={"username": self.api_username, "password": self.api_password},
                 timeout=self.timeout,
+                verify=self.verify_ssl,
             )
             if resp.status_code == 429:
-                self.auth_backoff_until = time.time() + 60
-                PrintStyle().error("Auth rate-limited (429). Backing off before retrying.")
+                # Rate limited - back off for longer to avoid hitting limit again
+                self.auth_backoff_until = time.time() + 300  # 5 minutes (matches API rate limit window)
+                PrintStyle().error("Auth rate-limited (429). Backing off for 5 minutes before retrying.")
                 return False
             resp.raise_for_status()
             self.csrf_token = self.session.cookies.get("adversys_csrf")
             return True
         except requests.RequestException as e:
+            # Back off for 30 seconds on other errors
             self.auth_backoff_until = time.time() + 30
             PrintStyle().error(f"Failed to authenticate with Adversys API: {e}")
             return False
@@ -117,22 +146,30 @@ class AdversysAPIClient:
                 params=params,
                 headers=headers,
                 timeout=self.timeout,
+                verify=self.verify_ssl,
             )
             if resp.status_code == 401:
-                # Retry once after re-auth
-                self.session.cookies.clear()
-                self.csrf_token = None
-                if self._ensure_session():
-                    if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
-                        headers["X-CSRF-Token"] = self.csrf_token
-                    resp = self.session.request(
-                        method=method,
-                        url=url,
-                        json=json_data,
-                        params=params,
-                        headers=headers,
-                        timeout=self.timeout,
-                    )
+                # Retry once after re-auth - clear cookies and force re-login
+                # Only retry if we're not rate-limited
+                if time.time() >= self.auth_backoff_until:
+                    self.session.cookies.clear()
+                    self.csrf_token = None
+                    if self._ensure_session():
+                        # Update CSRF token in headers for retry
+                        if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
+                            headers["X-CSRF-Token"] = self.csrf_token
+                        resp = self.session.request(
+                            method=method,
+                            url=url,
+                            json=json_data,
+                            params=params,
+                            headers=headers,
+                            timeout=self.timeout,
+                            verify=self.verify_ssl,
+                        )
+                else:
+                    # Rate limited - don't retry, just return the 401
+                    PrintStyle().warning("Skipping 401 retry due to rate limiting backoff period.")
             return resp
         except requests.RequestException as e:
             PrintStyle().error(f"API request failed: {e}")
