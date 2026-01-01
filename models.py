@@ -346,6 +346,17 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     model_value = model  # Already has prefix
                 else:
                     model_value = f"gemini/{model}"  # Add gemini/ prefix
+            elif provider_lower == "openrouter":
+                # For OpenRouter, LiteLLM requires format: openrouter/<model-id>
+                # Model IDs from OpenRouter are in format "provider/model" or "provider/model:variant"
+                # (e.g., "xiaomi/mimo-v2-flash:free")
+                # Always prepend "openrouter/" to match LiteLLM's expected format
+                if model.lower().startswith("openrouter/"):
+                    # Already has the prefix, use as-is
+                    model_value = model
+                else:
+                    # Prepend openrouter/ prefix (preserves variant suffixes like :free)
+                    model_value = f"openrouter/{model}"
             elif "/" in model and model.lower().startswith(f"{provider_lower}/"):
                 # Model already has the correct provider prefix, use as-is
                 model_value = model
