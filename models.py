@@ -346,11 +346,12 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     model_value = model  # Already has prefix
                 else:
                     model_value = f"gemini/{model}"  # Add gemini/ prefix
-            elif "/" in model and not model.lower().startswith(f"{provider_lower}/"):
-                # Model already has a prefix, use as-is
+            elif "/" in model and model.lower().startswith(f"{provider_lower}/"):
+                # Model already has the correct provider prefix, use as-is
                 model_value = model
             else:
-                # Standard format: provider/model
+                # Standard format: provider/model (even if model already has slashes)
+                # This ensures LiteLLM can detect the provider from the model name
                 model_value = f"{provider}/{model}"
         
         super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
@@ -877,8 +878,8 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
     # for openrouter add app reference
     if provider_name == "openrouter":
         kwargs["extra_headers"] = {
-            "HTTP-Referer": "https://delta.ai",
-            "X-Title": "Delta",
+            "HTTP-Referer": "https://adversys.ai",
+            "X-Title": "Adversys Delta",
         }
 
     # remap other to openai for litellm

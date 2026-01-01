@@ -15,7 +15,7 @@ Delta integrates with Adversys Core through a set of specialized tools that make
 Delta connects to Adversys Core using the following environment variables (configured in `docker-compose.yml`):
 
 - **`ADVERSYS_API_URL`**: Base URL for the Adversys API (default: `http://api:8000`)
-- **`ADVERSYS_API_USERNAME`**: Service account username (default: `orchestrator-service`)
+- **`ADVERSYS_API_USERNAME`**: Service account username (default: `adversys-service`)
 - **`ADVERSYS_API_PASSWORD`**: Service account password
 
 ### Authentication
@@ -31,12 +31,14 @@ The integration uses session cookie authentication:
 ### 1. AdversysAPIClient (`python/tools/adversys_api_tool.py`)
 
 Base HTTP client that handles:
+
 - Configuration from environment variables
 - Authentication (session login + CSRF)
 - HTTP request methods (GET, POST, PUT, DELETE)
 - Error handling and response formatting
 
 **Key Methods:**
+
 - `_ensure_session()`: Obtains authenticated session
 - `request()`: Makes authenticated API requests
 - `get()`, `post()`, `put()`, `delete()`: Convenience methods
@@ -44,6 +46,7 @@ Base HTTP client that handles:
 ### 2. AdversysAPI Base Tool (`python/tools/adversys_api_tool.py`)
 
 Base class for all Adversys tools that provides:
+
 - API client initialization
 - Standardized response handling
 - Error formatting
@@ -53,26 +56,31 @@ Base class for all Adversys tools that provides:
 All tools inherit from `AdversysAPI` and implement operation-based interfaces:
 
 #### `adversys_targets` - Target Management
+
 - **Operations**: `create`, `list`, `get`, `update`, `delete`
 - **Endpoints**: `/api/v1/targets/`
 - **Purpose**: Manage penetration testing targets (IPs, domains, ranges, etc.)
 
 #### `adversys_pentests` - Penetration Test Management
+
 - **Operations**: `create`, `start`, `status`, `pause`, `resume`, `approve_exploit`, `list`
 - **Endpoints**: `/api/v1/pentests/`
 - **Purpose**: Create, execute, and manage penetration tests
 
 #### `adversys_findings` - Findings Management
+
 - **Operations**: `list`, `get`, `update_status`, `summary`
 - **Endpoints**: `/api/v1/findings/`
 - **Purpose**: Review and manage security findings from tests
 
 #### `adversys_reports` - Report Generation
+
 - **Operations**: `generate`, `download`
 - **Endpoints**: `/api/v1/reports/`
 - **Purpose**: Generate HTML/PDF reports for completed tests
 
 #### `adversys_analysis` - Target Analysis
+
 - **Operations**: `analyze_target`, `get_vulnerabilities`, `get_findings_for_target`
 - **Endpoints**: `/api/v1/analysis/`
 - **Purpose**: Analyze targets and retrieve security insights
@@ -82,6 +90,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
 ### Standard Workflow
 
 1. **Create Target**
+
    ```python
    adversys_targets(
        operation="create",
@@ -92,6 +101,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
    ```
 
 2. **Create Penetration Test**
+
    ```python
    adversys_pentests(
        operation="create",
@@ -102,6 +112,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
    ```
 
 3. **Start Test**
+
    ```python
    adversys_pentests(
        operation="start",
@@ -110,6 +121,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
    ```
 
 4. **Monitor Progress**
+
    ```python
    adversys_pentests(
        operation="status",
@@ -118,6 +130,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
    ```
 
 5. **Review Findings**
+
    ```python
    adversys_findings(
        operation="list",
@@ -127,6 +140,7 @@ All tools inherit from `AdversysAPI` and implement operation-based interfaces:
    ```
 
 6. **Generate Report**
+
    ```python
    adversys_reports(
        operation="generate",
@@ -163,6 +177,7 @@ class AdversysTool(AdversysAPI):
 ### Response Handling
 
 The `_handle_api_response()` method:
+
 - Checks HTTP status codes
 - Parses JSON responses
 - Formats user-friendly messages
@@ -172,6 +187,7 @@ The `_handle_api_response()` method:
 ### Error Handling
 
 Errors are handled at multiple levels:
+
 1. **Network errors**: Caught and reported with connection details
 2. **HTTP errors**: Status codes and error messages from API
 3. **Validation errors**: Missing or invalid parameters
@@ -180,6 +196,7 @@ Errors are handled at multiple levels:
 ## System Prompt Integration
 
 Delta is configured with a specialized system prompt (`prompts/adversys/agent.system.md`) that:
+
 - Explains the role in Adversys Core
 - Documents all available tools and operations
 - Provides usage examples
@@ -200,6 +217,7 @@ All tools interact with the Adversys API at these endpoints:
 ## Network Configuration
 
 In Docker Compose:
+
 - Delta connects to the API service via the `adversys-network`
 - Service name resolution: `http://api:8000`
 - All services are on the same Docker network for internal communication
@@ -234,6 +252,7 @@ In Docker Compose:
 ## Future Enhancements
 
 Potential improvements:
+
 - WebSocket support for real-time test progress
 - Batch operations for multiple targets
 - Advanced filtering and search capabilities

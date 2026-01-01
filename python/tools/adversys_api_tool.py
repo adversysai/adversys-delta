@@ -32,15 +32,31 @@ class AdversysAPIClient:
         self.base_url = self.base_url.rstrip('/')
         
         # Get authentication credentials
+        # Service accounts should use API key authentication, not password-based login
+        # Priority: 1. Encrypted files (production), 2. Environment variable, 3. Database (if accessible)
+        self.api_key = ""
+        
+        # Try to load from encrypted files first (production - most secure)
+        self.api_key = self._get_api_key_from_encrypted_files()
+        
+        # Fall back to environment variable if encrypted files not available
+        if not self.api_key:
+            self.api_key = (
+                dotenv.get_dotenv_value("ADVERSYS_API_KEY") or 
+                os.getenv("ADVERSYS_API_KEY") or 
+                ""
+            )
+        
+        # If API key still not set, try to retrieve from database (for local development)
+        if not self.api_key:
+            self.api_key = self._get_api_key_from_database()
+        
+        # Service accounts use API key authentication only (no password-based login)
+        # Username is kept for reference but not used for authentication
         self.api_username = (
             dotenv.get_dotenv_value("ADVERSYS_API_USERNAME") or 
             os.getenv("ADVERSYS_API_USERNAME") or 
-            "orchestrator-service"
-        )
-        self.api_password = (
-            dotenv.get_dotenv_value("ADVERSYS_API_PASSWORD") or 
-            os.getenv("ADVERSYS_API_PASSWORD") or 
-            ""
+            "adversys-service"
         )
         
         # Default timeout for requests (in seconds)
@@ -64,51 +80,124 @@ class AdversysAPIClient:
             # Explicitly disabled
             self.verify_ssl = False
         
-        # Session for cookie-based auth
+        # Session is no longer used (API key authentication only)
         self.session = requests.Session()
         self.session.verify = self.verify_ssl
         self.csrf_token: Optional[str] = None
         self.auth_backoff_until = 0.0
     
-    def _ensure_session(self) -> bool:
-        """Ensure we have a valid session cookie by logging in if needed."""
-        if not self.api_username or not self.api_password:
-            return False
+    def _get_api_key_from_database(self) -> str:
+        """
+        Try to retrieve API key from the database (for local development convenience).
+        This is a fallback when ADVERSYS_API_KEY is not set in environment variables.
         
-        # Check if we have a session cookie and it's likely still valid
-        # We'll validate it by making a test request if we're unsure
-        session_cookie = self.session.cookies.get("adversys_session")
-        if session_cookie:
-            if not self.csrf_token:
-                self.csrf_token = self.session.cookies.get("adversys_csrf")
-            # Cookie exists - assume it's valid (will be validated on first API call)
-            return True
+        Returns:
+            API key string, or empty string if not found
+        """
+        # Try to access the database file (shared with API container in docker-compose)
+        db_paths = [
+            "/var/lib/adversys/core/adversys.db",  # Production/standard path
+            os.path.join(os.path.dirname(__file__), "../../../services/data/adversys.db"),  # Local dev fallback
+        ]
         
-        # No session cookie, need to login
-        if time.time() < self.auth_backoff_until:
-            return False
-
+        for db_path in db_paths:
+            if os.path.exists(db_path):
+                try:
+                    import sqlite3
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT api_key FROM users WHERE username = 'adversys-service' AND api_key IS NOT NULL AND api_key != ''"
+                    )
+                    result = cursor.fetchone()
+                    conn.close()
+                    if result and result[0]:
+                        PrintStyle().info(f"Retrieved API key from database: {db_path}")
+                        return result[0]
+                except Exception as e:
+                    # Silently fail - database might not be accessible or might not exist yet
+                    PrintStyle().debug(f"Could not retrieve API key from database at {db_path}: {e}")
+                    continue
+        
+        return ""
+    
+    def _get_api_key_from_encrypted_files(self) -> str:
+        """
+        Try to retrieve API key from encrypted files (production - most secure).
+        This uses the same encryption scheme as the orchestrator.
+        
+        Returns:
+            API key string, or empty string if not found
+        """
+        # Master key file path (should be stored separately from encrypted credentials)
+        MASTER_KEY_FILE = "/etc/adversys/core/master-key"
+        ENCRYPTED_CREDENTIALS_DIR = "/etc/adversys/core/encrypted"
+        ENCRYPTED_API_KEY_FILE = f"{ENCRYPTED_CREDENTIALS_DIR}/adversys-api-key.enc"
+        
+        # Check if encrypted files exist
+        if not os.path.exists(MASTER_KEY_FILE) or not os.path.exists(ENCRYPTED_API_KEY_FILE):
+            return ""
+        
+        # Try to import cryptography
         try:
-            login_url = f"{self.base_url}/api/v1/auth/login"
-            resp = self.session.post(
-                login_url,
-                json={"username": self.api_username, "password": self.api_password},
-                timeout=self.timeout,
-                verify=self.verify_ssl,
+            from cryptography.fernet import Fernet
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+            from cryptography.hazmat.backends import default_backend
+            import base64
+        except ImportError:
+            PrintStyle().debug("cryptography not available - cannot decrypt credentials from encrypted files")
+            return ""
+        
+        try:
+            # Read master key
+            with open(MASTER_KEY_FILE, 'rb') as f:
+                master_key = f.read().strip()
+                if len(master_key) == 0:
+                    return ""
+            
+            # Derive encryption key from master key using PBKDF2
+            salt = b'adversys_salt'
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+                backend=default_backend()
             )
-            if resp.status_code == 429:
-                # Rate limited - back off for longer to avoid hitting limit again
-                self.auth_backoff_until = time.time() + 300  # 5 minutes (matches API rate limit window)
-                PrintStyle().error("Auth rate-limited (429). Backing off for 5 minutes before retrying.")
-                return False
-            resp.raise_for_status()
-            self.csrf_token = self.session.cookies.get("adversys_csrf")
+            encryption_key = base64.urlsafe_b64encode(kdf.derive(master_key))
+            
+            # Read encrypted data
+            with open(ENCRYPTED_API_KEY_FILE, 'rb') as f:
+                encrypted_data = f.read()
+                if len(encrypted_data) == 0:
+                    return ""
+            
+            # Decrypt
+            fernet = Fernet(encryption_key)
+            decrypted_data = fernet.decrypt(encrypted_data)
+            api_key = decrypted_data.decode('utf-8')
+            
+            PrintStyle().info("Loaded API key from encrypted files")
+            return api_key
+            
+        except Exception as e:
+            PrintStyle().debug(f"Could not decrypt API key from encrypted files: {e}")
+            return ""
+    
+    def _ensure_session(self) -> bool:
+        """Ensure we have a valid session cookie by logging in if needed.
+        
+        Note: Service accounts should use API key authentication only.
+        This method is deprecated and will not work for service accounts.
+        """
+        # Service accounts must use API key authentication
+        if self.api_key:
             return True
-        except requests.RequestException as e:
-            # Back off for 30 seconds on other errors
-            self.auth_backoff_until = time.time() + 30
-            PrintStyle().error(f"Failed to authenticate with Adversys API: {e}")
-            return False
+        
+        # No API key - cannot authenticate (service accounts cannot use password login)
+        PrintStyle().error("ADVERSYS_API_KEY is required for service account authentication. Password-based login is not supported for service accounts.")
+        return False
     
     def request(
         self,
@@ -130,16 +219,18 @@ class AdversysAPIClient:
             Response object
         """
         url = f"{self.base_url}{endpoint}"
-        self._ensure_session()
         headers = {"Content-Type": "application/json"}
-        if method.upper() in ("POST", "PUT", "PATCH", "DELETE"):
-            if not self.csrf_token:
-                self.csrf_token = self.session.cookies.get("adversys_csrf")
-            if self.csrf_token:
-                headers["X-CSRF-Token"] = self.csrf_token
+        
+        # Service accounts must use API key authentication
+        if not self.api_key:
+            PrintStyle().error("ADVERSYS_API_KEY is required. Service accounts cannot use password-based authentication.")
+            raise ValueError("ADVERSYS_API_KEY environment variable is required for service account authentication")
+        
+        headers["X-API-Key"] = self.api_key
         
         try:
-            resp = self.session.request(
+            # API key auth - use regular requests (no session needed)
+            resp = requests.request(
                 method=method,
                 url=url,
                 json=json_data,
@@ -148,28 +239,10 @@ class AdversysAPIClient:
                 timeout=self.timeout,
                 verify=self.verify_ssl,
             )
+            
             if resp.status_code == 401:
-                # Retry once after re-auth - clear cookies and force re-login
-                # Only retry if we're not rate-limited
-                if time.time() >= self.auth_backoff_until:
-                    self.session.cookies.clear()
-                    self.csrf_token = None
-                    if self._ensure_session():
-                        # Update CSRF token in headers for retry
-                        if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and self.csrf_token:
-                            headers["X-CSRF-Token"] = self.csrf_token
-                        resp = self.session.request(
-                            method=method,
-                            url=url,
-                            json=json_data,
-                            params=params,
-                            headers=headers,
-                            timeout=self.timeout,
-                            verify=self.verify_ssl,
-                        )
-                else:
-                    # Rate limited - don't retry, just return the 401
-                    PrintStyle().warning("Skipping 401 retry due to rate limiting backoff period.")
+                PrintStyle().warning("API key authentication failed. Check that ADVERSYS_API_KEY is set correctly and matches the service account's API key in the database.")
+            
             return resp
         except requests.RequestException as e:
             PrintStyle().error(f"API request failed: {e}")

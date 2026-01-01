@@ -55,32 +55,16 @@ ENV BRANCH=$BRANCH
 # Also create symlinks: /app for our docker-compose volume mount, /a0 for official scripts
 COPY . /git/agent-zero
 
-# Remove /app if it exists as a directory, then create symlinks
+# Remove /app if it exists as a directory, then create symlink
 # /app is used as the working directory and should point to /git/agent-zero
-RUN rm -rf /app /a0 && \
-    ln -sf /git/agent-zero /app && \
-    ln -sf /git/agent-zero /a0
+# /a0 will be created as a real directory later for data storage (not source code)
+RUN rm -rf /app && \
+    ln -sf /git/agent-zero /app
 
 WORKDIR /app
 
 # Copy docker/run filesystem files (installation scripts, etc.)
 COPY docker/run/fs/ /
-
-# MODIFIED: Apply branding patch (Agent Zero -> Delta) before installation
-# This rebrands user-facing text while keeping technical references intact
-# The branding script replaces "Agent Zero", "agent0", "A0" with "Delta" in user-facing text
-# See scripts/apply-branding.sh and scripts/README.md for details
-RUN if [ -f /git/agent-zero/scripts/apply-branding.sh ]; then \
-        chmod +x /git/agent-zero/scripts/apply-branding.sh && \
-        echo "Running branding script..." && \
-        /git/agent-zero/scripts/apply-branding.sh /git/agent-zero && \
-        echo "Branding script completed successfully"; \
-    else \
-        echo "WARNING: Branding script not found at /git/agent-zero/scripts/apply-branding.sh"; \
-        echo "Listing /git/agent-zero/scripts/:"; \
-        ls -la /git/agent-zero/scripts/ || echo "Scripts directory does not exist"; \
-        exit 1; \
-    fi
 
 # Pre-installation steps (updates apt, fixes cron permissions, sets up SSH)
 RUN bash /ins/pre_install.sh $BRANCH
@@ -128,7 +112,9 @@ ENV VERSION=${GIT_TAG:-dev}
 
 # Create directories for Agent Zero data
 # Using root user (original Agent Zero pattern) for simplicity
+# Create /a0 as a real directory (not symlink) for data storage
 RUN mkdir -p /var/lib/adversys/agent-zero/{memory,knowledge,logs,tmp,usr} && \
+    mkdir -p /a0/{memory,knowledge,logs,tmp,usr} && \
     mkdir -p /app/tmp/{playwright,downloads}
 
 # Expose port 8002 (Adversys service port pattern)

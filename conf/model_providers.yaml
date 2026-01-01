@@ -67,10 +67,10 @@ chat:
   openrouter:
     name: OpenRouter
     litellm_provider: openrouter
-    kwargs:
-      extra_headers:
-        "HTTP-Referer": "https://agent-zero.ai/"
-        "X-Title": "Agent Zero"
+    # kwargs:
+    #   extra_headers:
+    #     "HTTP-Referer": "https://agent-zero.ai/"
+    #     "X-Title": "Agent Zero"
   sambanova:
     name: Sambanova
     litellm_provider: sambanova
