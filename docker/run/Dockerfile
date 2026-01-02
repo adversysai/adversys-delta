@@ -8,6 +8,12 @@ FROM adversys-delta-base:latest
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
+# Environment argument (defaults to "development" for local development)
+# Set to "production" for production builds
+# Can be overridden: docker build --build-arg ENVIRONMENT=production -f docker/run/Dockerfile .
+ARG ENVIRONMENT=development
+ENV ENVIRONMENT=$ENVIRONMENT
+
 # Copy filesystem files to root
 # Note: Build context should be the root of the project (docker build -f docker/run/Dockerfile .)
 COPY docker/run/fs/ /

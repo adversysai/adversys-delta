@@ -248,7 +248,12 @@ async def serve_index():
     # ES module imports are handled by Import Maps in index.html
     base_tag = f'<base href="{BASE_PATH}/">'
     script_tag = '<script>window.__disableServiceWorker = true;</script>'
-    index = index.replace('<head>', f'<head>\n    {base_tag}\n    {script_tag}', 1)
+    # Adversys Added this: Set development mode flag for frontend
+    # Hide Developer tab in production builds (ENVIRONMENT=production)
+    environment = os.getenv("ENVIRONMENT", "development")
+    is_development = environment.lower() == "development"
+    env_script_tag = f'<script>window.__isDevelopment = {str(is_development).lower()};</script>'
+    index = index.replace('<head>', f'<head>\n    {base_tag}\n    {script_tag}\n    {env_script_tag}', 1)
     
     return index
 

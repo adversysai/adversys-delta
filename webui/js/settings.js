@@ -20,6 +20,10 @@ const settingsModalProxy = {
 
     // Switch tab method
     switchTab(tabName) {
+        // Adversys Added this: Prevent switching to developer tab in production builds
+        if (tabName === 'developer' && window.__isDevelopment === false) {
+            return; // Don't allow switching to developer tab in production
+        }
         // Update our component state
         this.activeTab = tabName;
 
@@ -113,7 +117,12 @@ const settingsModalProxy = {
             // This ensures Alpine reactivity works as expected
             setTimeout(() => {
                 // Get stored tab or default to 'agent'
-                const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
+                let savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
+                // Adversys Added this: Reset developer tab to 'agent' in production builds
+                if (savedTab === 'developer' && window.__isDevelopment === false) {
+                    savedTab = 'agent';
+                    localStorage.setItem('settingsActiveTab', 'agent');
+                }
                 console.log(`Setting initial tab to: ${savedTab}`);
 
                 // Directly set the active tab
@@ -307,7 +316,15 @@ const settingsModalProxy = {
 document.addEventListener('alpine:init', function () {
     // Initialize the root store first to ensure it exists before components try to access it
     Alpine.store('root', {
-        activeTab: localStorage.getItem('settingsActiveTab') || 'agent',
+        activeTab: (() => {
+            // Adversys Added this: Reset developer tab to 'agent' in production builds
+            const savedTab = localStorage.getItem('settingsActiveTab') || 'agent';
+            if (savedTab === 'developer' && window.__isDevelopment === false) {
+                localStorage.setItem('settingsActiveTab', 'agent');
+                return 'agent';
+            }
+            return savedTab;
+        })(),
         isOpen: false,
 
         toggleSettings() {
@@ -325,7 +342,13 @@ document.addEventListener('alpine:init', function () {
 
             async init() {
                 // Initialize with the store value
-                this.activeTab = Alpine.store('root').activeTab || 'agent';
+                let initialTab = Alpine.store('root').activeTab || localStorage.getItem('settingsActiveTab') || 'agent';
+                // Adversys Added this: Reset developer tab to 'agent' in production builds
+                if (initialTab === 'developer' && window.__isDevelopment === false) {
+                    initialTab = 'agent';
+                    localStorage.setItem('settingsActiveTab', 'agent');
+                }
+                this.activeTab = initialTab;
 
                 // Watch store tab changes
                 this.$watch('$store.root.activeTab', (newTab) => {
@@ -342,6 +365,10 @@ document.addEventListener('alpine:init', function () {
             },
 
             switchTab(tab) {
+                // Adversys Added this: Prevent switching to developer tab in production builds
+                if (tab === 'developer' && window.__isDevelopment === false) {
+                    return; // Don't allow switching to developer tab in production
+                }
                 // Update our component state
                 this.activeTab = tab;
 
@@ -390,9 +417,17 @@ document.addEventListener('alpine:init', function () {
                         section.tab === 'external'
                     ) || [];
                 } else if (this.activeTab === 'developer') {
-                    this.filteredSections = this.settingsData.sections?.filter(section =>
-                        section.tab === 'developer'
-                    ) || [];
+                    // Adversys Added this: Hide developer sections in production builds
+                    if (window.__isDevelopment === false) {
+                        this.filteredSections = [];
+                        // Reset to agent tab if somehow developer tab was selected
+                        this.activeTab = 'agent';
+                        localStorage.setItem('settingsActiveTab', 'agent');
+                    } else {
+                        this.filteredSections = this.settingsData.sections?.filter(section =>
+                            section.tab === 'developer'
+                        ) || [];
+                    }
                 } else if (this.activeTab === 'mcp') {
                     this.filteredSections = this.settingsData.sections?.filter(section =>
                         section.tab === 'mcp'

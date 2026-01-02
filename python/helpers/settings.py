@@ -595,7 +595,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     api_keys_section: SettingsSection = {
         "id": "api_keys",
         "title": "API Keys",
-        "description": "API keys for model providers and services used by Delta. You can set multiple API keys separated by a comma (,). They will be used in round-robin fashion.<br>For more information abou Delta Venice provider, see <a href='http://delta.ai/?community/api-dashboard/about' target='_blank'>Delta Venice</a>.",
+        "description": "API keys for model providers and services used by Delta. You can set multiple API keys separated by a comma (,). They will be used in round-robin fashion.<br>For more information about A0 Venice provider, see <a href='http://agent0.ai/?community/api-dashboard/about' target='_blank'>Agent0 Venice</a>.",
         "fields": api_keys_fields,
         "tab": "external",
     }

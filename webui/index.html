@@ -218,8 +218,10 @@
                                     @click="switchTab('external')" title="External Services">External Services</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'mcp'}"
                                     @click="switchTab('mcp')" title="MCP">MCP/A2A</div>
+                                <!-- Adversys Added this: Hide Developer tab in production builds -->
                                 <div class="settings-tab" :class="{'active': activeTab === 'developer'}"
-                                    @click="switchTab('developer')" title="Developer">Developer</div>
+                                    @click="switchTab('developer')" title="Developer"
+                                    x-show="window.__isDevelopment === true">Developer</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'scheduler'}"
                                     @click="switchTab('scheduler')" title="Task Scheduler">Task Scheduler</div>
                                 <div class="settings-tab" :class="{'active': activeTab === 'backup'}"
