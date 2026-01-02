@@ -1,14 +1,21 @@
 # Use the pre-built base image for A0
-# FROM agent-zero-base:local
-FROM agent0ai/agent-zero-base:latest
+# Build base first: docker build -f docker/base/Dockerfile -t adversys-delta-base:latest .
+# Or use published base: FROM adversys-delta-base:latest
+FROM adversys-delta-base:latest
 
-# Check if the argument is provided, else throw an error
-ARG BRANCH
-RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
+# Branch argument (defaults to "local" for local development)
+# Can be overridden: docker build --build-arg BRANCH=main -f docker/run/Dockerfile .
+ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
 # Copy filesystem files to root
-COPY ./fs/ /
+# Note: Build context should be the root of the project (docker build -f docker/run/Dockerfile .)
+COPY docker/run/fs/ /
+
+# Adversys Added this: Copy application code to staging location for "local" branch
+# install_A0.sh will handle moving it to /git/agent-zero for local branch, or cloning for other branches
+# This matches the original pattern where install_A0.sh is responsible for getting the code
+COPY . /tmp/agent-zero-source
 
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH

@@ -1,15 +1,15 @@
-import * as msgs from "./js/messages.js";
-import * as api from "./js/api.js";
-import * as css from "./js/css.js";
-import { sleep } from "./js/sleep.js";
-import { store as attachmentsStore } from "./components/chat/attachments/attachmentsStore.js";
-import { store as speechStore } from "./components/chat/speech/speech-store.js";
-import { store as notificationStore } from "./components/notifications/notification-store.js";
-import { store as preferencesStore } from "./components/sidebar/bottom/preferences/preferences-store.js";
-import { store as inputStore } from "./components/chat/input/input-store.js";
-import { store as chatsStore } from "./components/sidebar/chats/chats-store.js";
-import { store as tasksStore } from "./components/sidebar/tasks/tasks-store.js";
-import { store as chatTopStore } from "./components/chat/top-section/chat-top-store.js";
+import * as msgs from "/js/messages.js";
+import * as api from "/js/api.js";
+import * as css from "/js/css.js";
+import { sleep } from "/js/sleep.js";
+import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
+import { store as speechStore } from "/components/chat/speech/speech-store.js";
+import { store as notificationStore } from "/components/notifications/notification-store.js";
+import { store as preferencesStore } from "/components/sidebar/bottom/preferences/preferences-store.js";
+import { store as inputStore } from "/components/chat/input/input-store.js";
+import { store as chatsStore } from "/components/sidebar/chats/chats-store.js";
+import { store as tasksStore } from "/components/sidebar/tasks/tasks-store.js";
+import { store as chatTopStore } from "/components/chat/top-section/chat-top-store.js";
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 

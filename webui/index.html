@@ -5,7 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Delta</title>
-    <link rel="icon" type="image/svg+xml" href="public/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/delta/public/favicon.svg">
+    
+    <!-- Adversys Added this: Import Map to handle /delta/ base path for ES modules -->
+    <!-- Import Maps allow us to map module specifiers (like /js/ or /components/) to actual URLs -->
+    <!-- This eliminates the need to manually prepend /delta/ to every import statement -->
+    <script type="importmap">
+    {
+        "imports": {
+            "/js/": "/delta/js/",
+            "/components/": "/delta/components/",
+            "/index.js": "/delta/index.js",
+            "/public/": "/delta/public/",
+            "/vendor/": "/delta/vendor/"
+        }
+    }
+    </script>
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="css/messages.css">
     <link rel="stylesheet" href="components/messages/action-buttons/simple-action-buttons.css">
@@ -219,7 +234,10 @@
                                     <template x-for="(section, index) in filteredSections" :key="section.title">
                                         <li>
                                             <a :href="'#section' + (index + 1)">
-                                                <img :src="'/public/' + section.id +'.svg'" :alt="section.title">
+                                                <!-- Adversys Added this: Use /delta/public/ prefix for dynamic Alpine.js bindings -->
+                                                <!-- Alpine.js :src bindings are evaluated at runtime, so HTML rewriting can't modify them -->
+                                                <!-- We must explicitly include /delta/ in the path for adversys-core integration -->
+                                                <img :src="'/delta/public/' + section.id +'.svg'" :alt="section.title">
                                                 <span x-text="section.title"></span>
                                             </a>
                                         </li>
@@ -227,7 +245,8 @@
                                     <!-- Tunnel navigation entry - only visible in the External Services tab -->
                                     <li x-show="activeTab === 'external'">
                                         <a href="#section-tunnel">
-                                            <img src="/public/tunnel.svg" alt="Tunnel">
+                                            <!-- Adversys Added this: Use /delta/public/ prefix for adversys-core integration -->
+                                            <img src="/delta/public/tunnel.svg" alt="Tunnel">
                                             <span>Flare Tunnel</span>
                                         </a>
                                     </li>
@@ -344,7 +363,8 @@
                                 <ul>
                                     <li>
                                         <a href="#section-task-scheduler">
-                                            <img src="/public/task_scheduler.svg" alt="Task Scheduler">
+                                            <!-- Adversys Added this: Use /delta/public/ prefix for adversys-core integration -->
+                                            <img src="/delta/public/task_scheduler.svg" alt="Task Scheduler">
                                             <span>Task Scheduler</span>
                                         </a>
                                     </li>

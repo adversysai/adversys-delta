@@ -1,10 +1,9 @@
-# Multi-stage build following official Agent Zero pattern
-# Stage 1: Build the base image (mirrors docker/base/Dockerfile)
-# Note: Docker doesn't support referencing another Dockerfile in FROM,
-# so we replicate the base build steps here. This matches docker/base/Dockerfile exactly.
+# Convenience wrapper: Multi-stage build that combines base + run stages
+# This allows building everything in one command, but you can also build separately:
+#   1. docker build -f docker/base/Dockerfile -t adversys-delta-base:latest .
+#   2. docker build -f docker/run/Dockerfile -t adversys-delta:latest .
 #
-# MODIFIED: Added branding patch step to rebrand Agent Zero to Delta during build
-# See scripts/apply-branding.sh for details
+# Stage 1: Build the base image (mirrors docker/base/Dockerfile)
 FROM docker.io/kalilinux/kali-rolling AS base
 
 # Set locale to en_US.UTF-8 and timezone to UTC
@@ -12,9 +11,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales 
 RUN sed -i -e 's/# \(en_US\.UTF-8 .*\)/\1/' /etc/locale.gen && \
     dpkg-reconfigure --frontend=noninteractive locales && \
     update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
-RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
-    echo "UTC" > /etc/timezone && \
-    dpkg-reconfigure -f noninteractive tzdata
+RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+RUN echo "UTC" > /etc/timezone
+RUN dpkg-reconfigure -f noninteractive tzdata
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
@@ -33,10 +32,8 @@ RUN bash /ins/install_base_packages4.sh
 RUN bash /ins/install_python.sh
 
 # Install searxng (optional, but part of official base)
-# SearXNG is used by Agent Zero's search tools, but installation has dependency issues with Python 3.13
-# We'll skip it for now - Agent Zero can fall back to DuckDuckGo or other search engines
-# If needed later, we can fix the installation or use a pre-built SearXNG image
-# RUN bash /ins/install_searxng.sh
+# SearXNG is used by Agent Zero's search tools for privacy-respecting web searches
+RUN bash /ins/install_searxng.sh
 
 # Configure ssh (optional, but part of official base)
 RUN bash /ins/configure_ssh.sh
@@ -44,24 +41,17 @@ RUN bash /ins/configure_ssh.sh
 # After install cleanup
 RUN bash /ins/after_install.sh
 
-# Stage 2: Install Agent Zero on top of base
+# Stage 2: Install Agent Zero on top of base (matches docker/run/Dockerfile structure)
 FROM base AS agent-zero
 
-# Set BRANCH to "local" to use local files instead of cloning from GitHub
+# Branch argument (defaults to "local" for local development)
+# Can be overridden: docker build --build-arg BRANCH=main .
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
 # Copy application code to /git/agent-zero (where install scripts expect it for "local" branch)
-# Also create symlinks: /app for our docker-compose volume mount, /a0 for official scripts
+# This matches the original Agent Zero pattern where code is built into the image at /git/agent-zero
 COPY . /git/agent-zero
-
-# Remove /app if it exists as a directory, then create symlink
-# /app is used as the working directory and should point to /git/agent-zero
-# /a0 will be created as a real directory later for data storage (not source code)
-RUN rm -rf /app && \
-    ln -sf /git/agent-zero /app
-
-WORKDIR /app
 
 # Copy docker/run filesystem files (installation scripts, etc.)
 COPY docker/run/fs/ /
@@ -84,19 +74,16 @@ RUN chmod -R u+w /opt/venv-a0 2>/dev/null || true && \
 # Install additional software (currently empty, but part of official flow)
 RUN bash /ins/install_additional.sh $BRANCH
 
+# Cache buster: cleanup repo and re-install A0 without caching
+# This ensures clean installs and speeds up builds by purging caches
+ARG CACHE_DATE=none
+RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+
 # Post-installation cleanup
 RUN bash /ins/post_install.sh $BRANCH
 
-# Copy entrypoint and set permissions
-COPY entrypoint.sh /entrypoint.sh
-RUN sed -i 's/\r$//' /entrypoint.sh && \
-    chmod +x /entrypoint.sh && \
-    test -f /entrypoint.sh && \
-    head -1 /entrypoint.sh | grep -q '^#!/bin/sh'
-
-# Configure Git safe directory to allow access to mounted repository
-RUN git config --global --add safe.directory /app && \
-    git config --global --add safe.directory /git/agent-zero
+# Make executable scripts executable (original Agent Zero pattern)
+RUN chmod +x /exe/initialize.sh /exe/run_A0.sh /exe/run_searxng.sh /exe/run_tunnel_api.sh 2>/dev/null || true
 
 # Capture Git information during build (if available)
 ARG GIT_COMMIT
@@ -110,21 +97,33 @@ ENV GIT_TAG=${GIT_TAG:-unknown}
 ENV BUILD_DATE=${BUILD_DATE:-unknown}
 ENV VERSION=${GIT_TAG:-dev}
 
-# Create directories for Agent Zero data
-# Using root user (original Agent Zero pattern) for simplicity
-# Create /a0 as a real directory (not symlink) for data storage
-RUN mkdir -p /var/lib/adversys/agent-zero/{memory,knowledge,logs,tmp,usr} && \
-    mkdir -p /a0/{memory,knowledge,logs,tmp,usr} && \
-    mkdir -p /app/tmp/{playwright,downloads}
+# Adversys Added this: Ensure Playwright browsers are installed during build
+# The install_playwright.sh script is already called by install_A0.sh, but we verify
+# it completed successfully and ensure browsers are in the expected location
+# This prevents runtime downloads when the container starts
+RUN . /opt/venv-a0/bin/activate && \
+    export PLAYWRIGHT_BROWSERS_PATH=/a0/tmp/playwright && \
+    if [ ! -d "/a0/tmp/playwright" ] || [ -z "$(ls -A /a0/tmp/playwright 2>/dev/null)" ]; then \
+        echo "Playwright browsers not found, running install script..." && \
+        bash /ins/install_playwright.sh "$BRANCH"; \
+    else \
+        echo "Playwright browsers already installed at /a0/tmp/playwright"; \
+    fi && \
+    # Ensure Playwright binaries have execute permissions (important when /a0 is mounted as volume)
+    find /a0/tmp/playwright -type f -name "headless_shell" -o -name "chrome" -o -name "chromium" | xargs chmod +x 2>/dev/null || true
 
-# Expose port 8002 (Adversys service port pattern)
-EXPOSE 8002
+# Expose ports (original Agent Zero pattern: 22 for SSH, 80 for UI, 9000-9009 for tunnel API)
+# We use 8002 for UI instead of 80, but keep other ports for compatibility
+EXPOSE 22 80 8002 9000-9009
 
 # Set default environment variables
 ENV WEB_UI_PORT=8002
 ENV WEB_UI_HOST=0.0.0.0
-ENV PLAYWRIGHT_BROWSERS_PATH=/app/tmp/playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/a0/tmp/playwright
 
-# Run the application through the entrypoint (handles permissions)
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["python3", "run_ui.py", "--port=8002", "--host=0.0.0.0"]
+# Initialize runtime and switch to supervisord (original Agent Zero pattern)
+# initialize.sh copies /per/* to /, sets up environment, and starts supervisord
+# BRANCH is set as ENV from ARG, so it's available at runtime
+# Use exec form to match original Agent Zero pattern: ["/exe/initialize.sh", "$BRANCH"]
+# The script will detect literal "$BRANCH" and read from ENV variable instead
+CMD ["/exe/initialize.sh", "$BRANCH"]

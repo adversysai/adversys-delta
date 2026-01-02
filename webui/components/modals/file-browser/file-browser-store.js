@@ -47,6 +47,10 @@ const model = {
       path = path || this.initialPath || this.browser.currentPath || "$WORK_DIR";
       this.browser.currentPath = path;
 
+      // Adversys Added this: Log the path being used to open the file browser
+      console.log("[fileBrowserStore.open] Opening file browser with path:", path);
+      console.log("[fileBrowserStore.open] currentPath set to:", this.browser.currentPath);
+
       // Fetch files
       await this.fetchFiles(this.browser.currentPath);
 
@@ -133,9 +137,12 @@ const model = {
   async fetchFiles(path = "") {
     this.isLoading = true;
     try {
-      const response = await fetchApi(
-        `/get_work_dir_files?path=${encodeURIComponent(path)}`
-      );
+      // Adversys Added this: Log the path being sent to the API
+      console.log("[fileBrowserStore.fetchFiles] Fetching files for path:", path);
+      const apiUrl = `/get_work_dir_files?path=${encodeURIComponent(path)}`;
+      console.log("[fileBrowserStore.fetchFiles] API URL:", apiUrl);
+      
+      const response = await fetchApi(apiUrl);
       if (response.ok) {
         const data = await response.json();
         this.browser.entries = data.data.entries;

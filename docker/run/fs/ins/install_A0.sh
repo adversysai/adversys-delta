@@ -12,15 +12,23 @@ fi
 BRANCH="$1"
 
 if [ "$BRANCH" = "local" ]; then
-    # For local branch, use the files
-    echo "Using local dev files in /git/agent-zero"
-    # List all files recursively in the target directory
-    # echo "All files in /git/agent-zero (recursive):"
-    # find "/git/agent-zero" -type f | sort
+    # Adversys Added this: For local branch, copy from staging location
+    # The code was copied to /tmp/agent-zero-source in the Dockerfile
+    # This matches the original pattern where install_A0.sh handles getting the code
+    if [ -d "/tmp/agent-zero-source" ] && [ "$(ls -A /tmp/agent-zero-source 2>/dev/null)" ]; then
+        echo "Copying local dev files from /tmp/agent-zero-source to /git/agent-zero"
+        mkdir -p /git/agent-zero
+        cp -r /tmp/agent-zero-source/* /git/agent-zero/
+        cp -r /tmp/agent-zero-source/.[!.]* /git/agent-zero/ 2>/dev/null || true
+    else
+        echo "ERROR: Local branch specified but no source code found in /tmp/agent-zero-source"
+        echo "       Make sure the Dockerfile copies the code before running install_A0.sh"
+        exit 1
+    fi
 else
-    # For other branches, clone from GitHub
+    # For other branches, clone from GitHub (original behavior)
     echo "Cloning repository from branch $BRANCH..."
-    git clone -b "$BRANCH" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
+    git clone -b "$BRANCH" "https://github.com/adversysai/adversys-delta" "/git/agent-zero" || {
         echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
         exit 1
     }
