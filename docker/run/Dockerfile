@@ -14,6 +14,11 @@ ENV BRANCH=$BRANCH
 ARG ENVIRONMENT=development
 ENV ENVIRONMENT=$ENVIRONMENT
 
+# GitHub repository URL argument (used when cloning from GitHub)
+# Can be overridden: docker build --build-arg GITHUB_REPO_URL=https://github.com/user/repo -f docker/run/Dockerfile .
+ARG GITHUB_REPO_URL=https://github.com/adversysai/adversys-delta
+ENV GITHUB_REPO_URL=$GITHUB_REPO_URL
+
 # Copy filesystem files to root
 # Note: Build context should be the root of the project (docker build -f docker/run/Dockerfile .)
 COPY docker/run/fs/ /
