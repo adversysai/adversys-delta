@@ -21,7 +21,9 @@ def get_playwright_binary():
     return None
 
 def get_playwright_cache_dir():
-    return files.get_abs_path("tmp/playwright")
+    # Use /a0/tmp/playwright to match original Agent Zero installation path
+    # /a0 is the data directory (persistent, mounted as volume)
+    return "/a0/tmp/playwright"
 
 def ensure_playwright_binary():
     bin = get_playwright_binary()

@@ -60,6 +60,10 @@ const model = {
       if (!resp.ok) throw new Error("Error getting knowledge path");
       const path = resp.path;
 
+      // Adversys Added this: Log the path for debugging
+      console.log("[loadKnowledge] Path received from API:", path);
+      console.log("[loadKnowledge] Opening file browser with path:", path);
+
       // open file browser and wait for it to close
       await fileBrowserStore.open(path);
 

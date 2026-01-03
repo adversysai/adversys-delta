@@ -1,6 +1,6 @@
 // message actions and components
-import { store as imageViewerStore } from "../components/modals/image-viewer/image-viewer-store.js";
-import { marked } from "../vendor/marked/marked.esm.js";
+import { store as imageViewerStore } from "/components/modals/image-viewer/image-viewer-store.js";
+import { marked } from "/vendor/marked/marked.esm.js";
 import { store as _messageResizeStore } from "/components/messages/resize/message-resize-store.js"; // keep here, required in html
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { addActionButtonsToElement } from "/components/messages/action-buttons/simple-action-buttons.js";
@@ -730,7 +730,8 @@ function drawKvps(container, kvps, latex) {
         if (typeof value === "string" && value.startsWith("img://")) {
           const imgElement = document.createElement("img");
           imgElement.classList.add("kvps-img");
-          imgElement.src = value.replace("img://", "/image_get?path=");
+          // Adversys Added this: Prepend /delta/ to image_get paths for adversys-core integration
+          imgElement.src = value.replace("img://", "/delta/image_get?path=");
           imgElement.alt = "Image Attachment";
           tdiv.appendChild(imgElement);
 
@@ -845,7 +846,8 @@ function drawKvpsIncremental(container, kvps, latex) {
       if (typeof value === "string" && value.startsWith("img://")) {
         const imgElement = document.createElement("img");
         imgElement.classList.add("kvps-img");
-        imgElement.src = value.replace("img://", "/image_get?path=");
+        // Adversys Added this: Prepend /delta/ to image_get paths for adversys-core integration
+        imgElement.src = value.replace("img://", "/delta/image_get?path=");
         imgElement.alt = "Image Attachment";
         tdiv.appendChild(imgElement);
 
@@ -920,7 +922,8 @@ function convertHTML(str) {
 }
 
 function convertImgFilePaths(str) {
-  return str.replace(/img:\/\//g, "/image_get?path=");
+  // Adversys Added this: Prepend /delta/ to image_get paths for adversys-core integration
+  return str.replace(/img:\/\//g, "/delta/image_get?path=");
 }
 
 export function convertIcons(str) {

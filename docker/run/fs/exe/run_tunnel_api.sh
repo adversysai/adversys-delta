@@ -11,8 +11,11 @@ done
 
 . "/ins/setup_venv.sh" "$@"
 
-exec python /a0/run_tunnel.py \
-    --dockerized=true \
+# Use venv Python directly to ensure all dependencies are available
+PYTHON="/opt/venv-a0/bin/python"
+
+exec $PYTHON /a0/run_tunnel.py \
+    --dockerized \
     --port=80 \
     --tunnel_api_port=55520 \
     --host="0.0.0.0" \

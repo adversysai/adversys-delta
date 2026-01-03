@@ -42,7 +42,10 @@
                   <template x-for="file in $store.fileBrowser.sortFiles($store.fileBrowser.browser.entries)" :key="file.path">
                     <div class="file-item" :data-is-dir="file.is_dir">
                       <div class="file-name" @click="file.is_dir ? $store.fileBrowser.navigateToFolder(file.path) : $store.fileBrowser.downloadFile(file)">
-                        <img :src="'/public/' + (file.type === 'unknown' ? 'file' : ($store.fileBrowser.isArchive(file.name) ? 'archive' : file.type)) + '.svg'" class="file-icon" :alt="file.type" />
+                        <!-- Adversys Added this: Use /delta/public/ prefix for dynamic Alpine.js bindings -->
+                        <!-- Alpine.js :src bindings are evaluated at runtime, so HTML rewriting can't modify them -->
+                        <!-- We must explicitly include /delta/ in the path for adversys-core integration -->
+                        <img :src="'/delta/public/' + (file.type === 'unknown' ? 'file' : ($store.fileBrowser.isArchive(file.name) ? 'archive' : file.type)) + '.svg'" class="file-icon" :alt="file.type" />
                         <span x-text="file.name"></span>
                       </div>
                       <div class="file-size" x-text="$store.fileBrowser.formatFileSize(file.size)"></div>

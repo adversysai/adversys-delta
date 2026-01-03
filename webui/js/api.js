@@ -1,4 +1,17 @@
 /**
+ * Adversys Core Integration Changes:
+ * ===================================
+ * This file has been modified for integration with adversys-core. The following changes were made:
+ * 
+ * 1. Base Path Support:
+ *    - fetchApi() now prepends "/delta" to absolute URLs (paths starting with '/')
+ *    - getCsrfToken() uses "/delta/csrf_token" for the CSRF token endpoint
+ *    - This allows API calls to work correctly when Delta is served at /delta/ instead of root
+ * 
+ * The base path is hardcoded to "/delta" since it will never change in adversys-core integration.
+ */
+
+/**
  * Call a JSON-in JSON-out API endpoint
  * Data is automatically serialized
  * @param {string} endpoint - The API endpoint to call
@@ -44,10 +57,10 @@ export async function fetchApi(url, request) {
     // add the CSRF token to the headers
     finalRequest.headers["X-CSRF-Token"] = token;
 
-    // prepend base path to absolute URLs if base path is set
+    // Adversys Added this: prepend /delta base path to absolute URLs
     let finalUrl = url;
-    if (window.__agentZeroBasePath && url.startsWith('/')) {
-      finalUrl = window.__agentZeroBasePath + url;
+    if (url.startsWith('/')) {
+      finalUrl = '/delta' + url;
     }
 
     // perform the fetch with the updated request
@@ -85,7 +98,8 @@ let csrfToken = null;
  */
 async function getCsrfToken() {
   if (csrfToken) return csrfToken;
-  const csrfUrl = window.__agentZeroBasePath ? window.__agentZeroBasePath + "/csrf_token" : "/csrf_token";
+  // Adversys Added this: use /delta base path
+  const csrfUrl = "/delta/csrf_token";
   const response = await fetch(csrfUrl, {
     credentials: "same-origin",
   });

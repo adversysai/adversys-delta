@@ -1,3 +1,13 @@
+/**
+ * Adversys Core Integration Changes:
+ * ===================================
+ * This file has been modified for integration with adversys-core. The following changes were made:
+ * 
+ * 1. Base Path Support:
+ *    - Component URLs now prepend "/delta" to work correctly when Delta is served at /delta/ instead of root
+ *    - This ensures component fetches go to /delta/components/... instead of /components/...
+ */
+
 // Import a component into a target element
 // Import a component and recursively load its nested components
 // Returns the parsed document for additional processing
@@ -29,9 +39,11 @@ export async function importComponent(path, targetElement) {
     // Show loading indicator
     targetElement.innerHTML = '<div class="loading"></div>';
 
-    // full component url
+    // Adversys Added this: full component url with /delta base path
     const trimmedPath = path.replace(/^\/+/, "");
-    const componentUrl = trimmedPath.startsWith("components/") ? trimmedPath : "components/" + trimmedPath;
+    const componentPath = trimmedPath.startsWith("components/") ? trimmedPath : "components/" + trimmedPath;
+    // Prepend /delta base path for adversys-core integration
+    const componentUrl = "/delta/" + componentPath;
 
     // get html from cache or fetch it
     let html;
@@ -67,9 +79,14 @@ export async function importComponent(path, targetElement) {
 
         if (isModule) {
           if (node.src) {
-            // For <script type="module" src="..." use dynamic import
+            // Adversys Added this: For <script type="module" src="..." use dynamic import
+            // Prepend /delta to absolute paths for adversys-core integration
+            let srcPath = node.src;
+            if (srcPath.startsWith('/') && !srcPath.startsWith('/delta')) {
+              srcPath = '/delta' + srcPath;
+            }
             const resolvedUrl = new URL(
-              node.src,
+              srcPath,
               globalThis.location.origin
             ).toString();
 
@@ -87,12 +104,17 @@ export async function importComponent(path, targetElement) {
 
             // For inline module scripts, use cache or create blob
             if (!componentCache[virtualUrl]) {
-              // Transform relative import paths to absolute URLs
+              // Adversys Added this: Transform relative import paths to absolute URLs
+              // Prepend /delta to absolute paths for adversys-core integration
               let content = node.textContent.replace(
                 /import\s+([^'"]+)\s+from\s+["']([^"']+)["']/g,
                 (match, bindings, importPath) => {
                   // Convert relative OR root-based (e.g. /src/...) to absolute URLs
                   if (!/^https?:\/\//.test(importPath)) {
+                    // Prepend /delta to absolute paths
+                    if (importPath.startsWith('/') && !importPath.startsWith('/delta')) {
+                      importPath = '/delta' + importPath;
+                    }
                     const absoluteUrl = new URL(
                       importPath,
                       globalThis.location.origin
@@ -132,6 +154,10 @@ export async function importComponent(path, targetElement) {
           script.textContent = node.textContent;
 
           if (script.src) {
+            // Adversys Added this: Prepend /delta to absolute paths for adversys-core integration
+            if (script.src.startsWith('/') && !script.src.startsWith('/delta')) {
+              script.src = '/delta' + script.src;
+            }
             const promise = new Promise((resolve, reject) => {
               script.onload = resolve;
               script.onerror = reject;

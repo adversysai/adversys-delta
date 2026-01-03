@@ -15,8 +15,9 @@ ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 ENV TZ=UTC
 
-# Copy contents of the project to /
-COPY ./fs/ /
+# Copy contents of the base filesystem to /
+# Note: Build context should be the root of the project (docker build -f docker/base/Dockerfile .)
+COPY docker/base/fs/ /
 
 # install packages software (split for better cache management)
 RUN bash /ins/install_base_packages1.sh
