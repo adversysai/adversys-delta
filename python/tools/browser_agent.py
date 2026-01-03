@@ -35,13 +35,25 @@ class State:
         files.delete_dir(self.get_user_data_dir()) # cleanup user data dir
 
     def get_user_data_dir(self):
-        return str(
+        user_data_dir = str(
             Path.home()
             / ".config"
             / "browseruse"
             / "profiles"
             / f"agent_{self.agent.context.id}"
         )
+        # Clean up locked profiles from previous crashes
+        # Chrome crashes can leave locked profile directories that prevent new sessions
+        profile_path = Path(user_data_dir)
+        if profile_path.exists():
+            lock_file = profile_path / "SingletonLock"
+            if lock_file.exists():
+                try:
+                    lock_file.unlink()
+                    PrintStyle().debug(f"Removed stale profile lock: {lock_file}")
+                except Exception:
+                    pass  # Lock might be held by another process, that's okay
+        return user_data_dir
 
     async def _initialize(self):
         if self.browser_session:
@@ -67,7 +79,18 @@ class State:
                 screen={"width": 1024, "height": 2048},
                 viewport={"width": 1024, "height": 2048},
                 no_viewport=False,
-                args=["--headless=new"],
+                # Adversys Added this: Additional Chrome args for Docker container stability
+                # --disable-dev-shm-usage: Prevents shared memory issues in Docker
+                # --no-sandbox: Required for Docker (chromium_sandbox=False may not be enough)
+                # --disable-gpu: Helps in headless mode
+                # --disable-software-rasterizer: Helps in containers without GPU
+                args=[
+                    "--headless=new",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                ],
                 # Use a unique user data directory to avoid conflicts
                 user_data_dir=self.get_user_data_dir(),
                 extra_http_headers=self.agent.config.browser_http_headers or {},

@@ -344,7 +344,7 @@ class Agent:
 
         # non-config vars
         self.number = number
-        self.agent_name = f"A{self.number}"
+        self.agent_name = f"Delta{self.number}"
 
         self.history = history.History(self)  # type: ignore[abstract]
         self.last_user_message: history.Message | None = None

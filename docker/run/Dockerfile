@@ -1,11 +1,23 @@
 # Use the pre-built base image for A0
-# FROM agent-zero-base:local
-FROM agent0ai/agent-zero-base:latest
+# Build base first: docker build -f docker/base/Dockerfile -t adversys-delta-base:latest .
+# Or use published base: FROM adversys-delta-base:latest
+FROM adversys-delta-base:latest
 
-# Check if the argument is provided, else throw an error
-ARG BRANCH
-RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
+# Branch argument (defaults to "local" for local development)
+# Can be overridden: docker build --build-arg BRANCH=main -f docker/run/Dockerfile .
+ARG BRANCH=local
 ENV BRANCH=$BRANCH
+
+# Environment argument (defaults to "development" for local development)
+# Set to "production" for production builds
+# Can be overridden: docker build --build-arg ENVIRONMENT=production -f docker/run/Dockerfile .
+ARG ENVIRONMENT=development
+ENV ENVIRONMENT=$ENVIRONMENT
+
+# GitHub repository URL argument (used when cloning from GitHub)
+# Can be overridden: docker build --build-arg GITHUB_REPO_URL=https://github.com/user/repo -f docker/run/Dockerfile .
+ARG GITHUB_REPO_URL=https://github.com/adversysai/adversys-delta
+ENV GITHUB_REPO_URL=$GITHUB_REPO_URL
 
 # Copy filesystem files to root
 # Note: Build context should be the root of the project (docker build -f docker/run/Dockerfile .)

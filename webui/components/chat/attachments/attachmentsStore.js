@@ -1,6 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { fetchApi } from "/js/api.js";
-import { store as imageViewerStore } from "../../modals/image-viewer/image-viewer-store.js";
+import { store as imageViewerStore } from "/components/modals/image-viewer/image-viewer-store.js";
 
 const model = {
   // State properties
@@ -258,8 +258,9 @@ const model = {
   },
 
   // Generate server-side API URL for file (for device sync)
+  // Adversys Added this: Prepend /delta/ to image_get paths for adversys-core integration
   getServerImgUrl(filename) {
-    return `/image_get?path=/a0/tmp/uploads/${encodeURIComponent(filename)}`;
+    return `/delta/image_get?path=/a0/tmp/uploads/${encodeURIComponent(filename)}`;
   },
 
   getServerFileUrl(filename) {
@@ -331,7 +332,9 @@ const model = {
       odp: "document",
     };
     const type = types[extension] || "file";
-    return `/public/${type}.svg`;
+    // Adversys Added this: Use /delta/public/ prefix for adversys-core integration
+    // This function returns paths used in dynamic contexts where HTML rewriting doesn't apply
+    return `/delta/public/${type}.svg`;
   },
 
   // Enhanced method to get attachment display info for UI

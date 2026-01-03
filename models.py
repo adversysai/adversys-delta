@@ -16,6 +16,7 @@ from typing import (
 
 from litellm import completion, acompletion, embedding
 import litellm
+from litellm.exceptions import AuthenticationError
 import openai
 # from litellm.types.utils import ModelResponse  # Not available in this version
 
@@ -609,6 +610,56 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 # Successful completion of stream
                 return result.response, result.reasoning
 
+            except AuthenticationError as e:
+                # Adversys Added this: Provide user-friendly error message for missing API keys
+                # Extract provider name from model name or error message
+                model_name = self.model_name or "unknown"
+                provider_name = "API provider"
+                
+                # Try to extract provider from model name (e.g., "openrouter/openai/gpt-4" -> "OpenRouter")
+                if "/" in model_name:
+                    provider_name = model_name.split("/")[0].title()
+                elif "openrouter" in model_name.lower():
+                    provider_name = "OpenRouter"
+                elif "openai" in model_name.lower():
+                    provider_name = "OpenAI"
+                elif "anthropic" in model_name.lower() or "claude" in model_name.lower():
+                    provider_name = "Anthropic"
+                elif "google" in model_name.lower() or "gemini" in model_name.lower():
+                    provider_name = "Google"
+                
+                # Check error message for more specific information
+                error_msg = str(e)
+                if "cookie" in error_msg.lower() or "openrouter" in error_msg.lower():
+                    provider_name = "OpenRouter"
+                    error_message = f"OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable or configure it in your settings."
+                elif "api key" in error_msg.lower() or "api_key" in error_msg.lower():
+                    # Generic API key error
+                    api_key_var = f"{provider_name.upper().replace(' ', '_')}_API_KEY"
+                    error_message = f"{provider_name} API key not configured. Please set the {api_key_var} environment variable or configure it in your settings."
+                else:
+                    # Fallback to generic message
+                    error_message = f"{provider_name} authentication failed. Please check your API key configuration in settings or environment variables."
+                
+                # Re-raise AuthenticationError with user-friendly message
+                # AuthenticationError requires llm_provider and model as positional arguments
+                # Extract from original exception or use detected values
+                llm_provider = getattr(e, 'llm_provider', None)
+                model = getattr(e, 'model', None)
+                
+                # If not available from original exception, use extracted values
+                if not llm_provider:
+                    llm_provider = provider_name.lower().replace(' ', '_')
+                if not model:
+                    model = model_name
+                
+                # Create new AuthenticationError with required positional args
+                # Then override args to include user-friendly message
+                auth_error = AuthenticationError(llm_provider, model)
+                # Set user-friendly message as the first argument
+                auth_error.args = (error_message, llm_provider, model)
+                raise auth_error from e
+                
             except Exception as e:
                 import asyncio
 

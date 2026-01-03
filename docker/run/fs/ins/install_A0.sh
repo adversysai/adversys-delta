@@ -21,10 +21,13 @@ if [ "$BRANCH" = "local" ]; then
         exit 1
     fi
 else
-    # For other branches, clone from GitHub
+    # For other branches, clone from GitHub (original behavior)
+    # Use GITHUB_REPO_URL from environment (set via Dockerfile ARG/ENV)
+    GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/adversysai/adversys-delta}"
     echo "Cloning repository from branch $BRANCH..."
-    git clone -b "$BRANCH" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
-        echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
+    echo "Repository URL: $GITHUB_REPO_URL"
+    git clone -b "$BRANCH" "$GITHUB_REPO_URL" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH, URL: $GITHUB_REPO_URL"
         exit 1
     }
 fi

@@ -2,19 +2,19 @@
   "name": "Delta",
   "short_name": "Delta",
   "description": "Autonomous AI agent",
-  "start_url": "/",
+  "start_url": "/delta/",
   "display": "standalone",
   "background_color": "#1a1a1a",
   "theme_color": "#333333",
   "icons": [
     {
-      "src": "/public/icon-maskable.svg",
+      "src": "/delta/public/icon-maskable.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
     },
     {
-      "src": "/public/icon.svg",
+      "src": "/delta/public/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

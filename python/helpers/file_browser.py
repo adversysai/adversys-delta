@@ -21,9 +21,7 @@ class FileBrowser:
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
     def __init__(self):
-        # Use /app as base directory (container working directory, user has access)
-        # This prevents permission errors when trying to access /root or other restricted directories
-        base_dir = "/app"
+        base_dir = "/"
         self.base_dir = Path(base_dir)
 
     def _check_file_size(self, file) -> bool:
@@ -228,34 +226,6 @@ class FileBrowser:
 
     def get_files(self, current_path: str = "") -> Dict:
         try:
-            # Handle /a0/... paths: strip /a0/ prefix to get relative path
-            # These are normalized paths from normalize_a0_path() function
-            # Also handle /app/a0/... paths (in case they're already resolved)
-            # Also handle a0/... paths (without leading slash)
-            # Check in order: longest match first
-            if current_path.startswith("/app/a0/"):
-                current_path = current_path[8:]  # Remove "/app/a0/" prefix
-            elif current_path.startswith("/a0/"):
-                current_path = current_path[4:]  # Remove "/a0/" prefix
-            elif current_path.startswith("a0/"):
-                current_path = current_path[3:]  # Remove "a0/" prefix
-            elif current_path.startswith("/app/"):
-                # If path already starts with /app/, remove it since base_dir is /app
-                current_path = current_path[5:]  # Remove "/app/" prefix
-            
-            # Normalize path: strip leading/trailing slashes and whitespace
-            if current_path:
-                current_path = current_path.strip().strip("/")
-            
-            # Handle special cases: "root" (in any form) means empty path (use base_dir)
-            if current_path.lower() == "root":
-                current_path = ""
-            
-            # Normalize path: strip leading slashes to make it relative to base_dir
-            # This prevents absolute paths from bypassing base_dir restrictions
-            if current_path and current_path.startswith("/"):
-                current_path = current_path.lstrip("/")
-            
             # Resolve the full path while preventing directory traversal
             full_path = (self.base_dir / current_path).resolve()
             if not str(full_path).startswith(str(self.base_dir)):
