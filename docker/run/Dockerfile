@@ -8,7 +8,12 @@ RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
 ENV BRANCH=$BRANCH
 
 # Copy filesystem files to root
-COPY ./fs/ /
+# Note: Build context should be the root of the project (docker build -f docker/run/Dockerfile .)
+COPY docker/run/fs/ /
+
+# Copy application code to /git/agent-zero (where install scripts expect it for "local" branch)
+# This matches the original Agent Zero pattern where code is built into the image at /git/agent-zero
+COPY . /git/agent-zero
 
 # pre installation steps
 RUN bash /ins/pre_install.sh $BRANCH

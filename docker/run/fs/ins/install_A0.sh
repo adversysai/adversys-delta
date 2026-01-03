@@ -12,11 +12,14 @@ fi
 BRANCH="$1"
 
 if [ "$BRANCH" = "local" ]; then
-    # For local branch, use the files
-    echo "Using local dev files in /git/agent-zero"
-    # List all files recursively in the target directory
-    # echo "All files in /git/agent-zero (recursive):"
-    # find "/git/agent-zero" -type f | sort
+    # For local branch, code should already be copied to /git/agent-zero by the Dockerfile
+    if [ -d "/git/agent-zero" ] && [ "$(ls -A /git/agent-zero 2>/dev/null)" ]; then
+        echo "Using local dev files from /git/agent-zero"
+    else
+        echo "ERROR: Local branch specified but no source code found in /git/agent-zero"
+        echo "       Make sure the Dockerfile copies the code before running install_A0.sh"
+        exit 1
+    fi
 else
     # For other branches, clone from GitHub
     echo "Cloning repository from branch $BRANCH..."
