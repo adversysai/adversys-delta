@@ -26,6 +26,13 @@ else
     GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/adversysai/adversys-delta}"
     echo "Cloning repository from branch $BRANCH..."
     echo "Repository URL: $GITHUB_REPO_URL"
+    
+    # Remove existing directory if it exists (Dockerfile may have copied code there)
+    if [ -d "/git/agent-zero" ]; then
+        echo "Removing existing /git/agent-zero directory before cloning..."
+        rm -rf /git/agent-zero
+    fi
+    
     git clone -b "$BRANCH" "$GITHUB_REPO_URL" "/git/agent-zero" || {
         echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH, URL: $GITHUB_REPO_URL"
         exit 1
