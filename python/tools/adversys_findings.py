@@ -77,7 +77,11 @@ class AdversysFindings(AdversysAPI):
         if "description" in self.args:
             # Process §§include(...) syntax in description
             description = replace_file_includes(self.args["description"])
-            finding_data["description"] = description + agent_zero_note
+            # Only append the tag if it's not already present to avoid duplication
+            if "[Discovered by Delta - Custom Test]" not in description:
+                finding_data["description"] = description + agent_zero_note
+            else:
+                finding_data["description"] = description
         else:
             finding_data["description"] = agent_zero_note.strip()
         
