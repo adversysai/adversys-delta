@@ -11,7 +11,7 @@ PYTHON="${VIRTUAL_ENV:-/opt/venv-a0}/bin/python"
 $PYTHON /a0/prepare.py --dockerized
 # $PYTHON /a0/preload.py --dockerized # no need to run preload if it's done during container build
 
-echo "Starting A0..."
+echo "Starting Delta..."
 exec $PYTHON /a0/run_ui.py \
     --dockerized \
     --port=8002 \

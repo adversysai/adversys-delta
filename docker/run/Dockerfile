@@ -34,7 +34,19 @@ RUN bash /ins/pre_install.sh $BRANCH
 RUN bash /ins/install_A0.sh $BRANCH
 
 # install additional software
-RUN bash /ins/install_additional.sh $BRANCH
+# Use optimized script with build args for size control
+# Default: Keep Metasploit, remove heavy optional tools
+ARG INSTALL_METASPLOIT=true
+ARG INSTALL_NEO4J=false
+ARG INSTALL_EXPLOITDB=true
+ARG INSTALL_WORDLISTS=false
+ARG INSTALL_GO_TOOLS=false
+ENV INSTALL_METASPLOIT=$INSTALL_METASPLOIT
+ENV INSTALL_NEO4J=$INSTALL_NEO4J
+ENV INSTALL_EXPLOITDB=$INSTALL_EXPLOITDB
+ENV INSTALL_WORDLISTS=$INSTALL_WORDLISTS
+ENV INSTALL_GO_TOOLS=$INSTALL_GO_TOOLS
+RUN bash /ins/install_additional_optimized.sh $BRANCH
 
 # cleanup repo and install A0 without caching, this speeds up builds
 ARG CACHE_DATE=none
