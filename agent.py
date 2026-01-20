@@ -159,12 +159,19 @@ class AgentContext:
         self.output_data[key] = value
 
     def output(self):
+        # Defensive check for created_at attribute (in case object was created without going through __init__)
+        created_at_value = getattr(self, 'created_at', None)
+        if created_at_value is None:
+            # Fallback: set it now if it doesn't exist
+            created_at_value = datetime.now(timezone.utc)
+            self.created_at = created_at_value
+        
         return {
             "id": self.id,
             "name": self.name,
             "created_at": (
-                Localization.get().serialize_datetime(self.created_at)
-                if self.created_at
+                Localization.get().serialize_datetime(created_at_value)
+                if created_at_value
                 else Localization.get().serialize_datetime(datetime.fromtimestamp(0))
             ),
             "no": self.no,
