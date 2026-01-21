@@ -121,8 +121,14 @@ class AdversysTargets(AdversysAPI):
             for target in all_targets:
                 matches = True
 
-                if query and query.lower() not in target.get('value', '').lower():
-                    matches = False
+                # If query is provided, search in both name and value fields
+                if query:
+                    query_lower = query.lower()
+                    target_name = target.get('name', '').lower()
+                    target_value = target.get('value', '').lower()
+                    # Check if query matches name OR value
+                    if query_lower not in target_name and query_lower not in target_value:
+                        matches = False
 
                 if search_type and search_type.lower() != target.get('type', '').lower():
                     matches = False

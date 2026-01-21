@@ -41,6 +41,19 @@ RUN bash /ins/configure_ssh.sh
 # After install cleanup
 RUN bash /ins/after_install.sh
 
+# Install libcap2-bin if not already installed (required for setcap)
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libcap2-bin || true && \
+    if command -v nmap >/dev/null 2>&1; then \
+        setcap cap_net_raw,cap_net_admin+eip /usr/bin/nmap || \
+        (echo "WARNING: Failed to set capabilities on nmap. Raw socket access may not work." && \
+         echo "Container may need to run with --privileged or --cap-add=NET_RAW,NET_ADMIN" && \
+         true); \
+    else \
+        echo "INFO: nmap not found in base image. Capabilities not set."; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
+
 # Stage 2: Install Agent Zero on top of base (matches docker/run/Dockerfile structure)
 FROM base AS agent-zero
 
@@ -49,12 +62,17 @@ FROM base AS agent-zero
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
-# Copy application code to /git/agent-zero (where install scripts expect it for "local" branch)
-# This matches the original Agent Zero pattern where code is built into the image at /git/agent-zero
-COPY . /git/agent-zero
+ARG ENVIRONMENT=production
+ENV ENVIRONMENT=$ENVIRONMENT
+
+ARG GITHUB_REPO_URL=https://github.com/adversysai/adversys-delta
 
 # Copy docker/run filesystem files (installation scripts, etc.)
 COPY docker/run/fs/ /
+
+# Copy application code to /git/agent-zero (where install scripts expect it for "local" branch)
+# This matches the original Agent Zero pattern where code is built into the image at /git/agent-zero
+COPY . /git/agent-zero
 
 # Pre-installation steps (updates apt, fixes cron permissions, sets up SSH)
 RUN bash /ins/pre_install.sh $BRANCH
@@ -72,7 +90,20 @@ RUN chmod -R u+w /opt/venv-a0 2>/dev/null || true && \
     echo "Warning: Failed to pre-install spaCy model, will attempt at runtime"
 
 # Install additional software (currently empty, but part of official flow)
-RUN bash /ins/install_additional.sh $BRANCH
+# install additional software
+# Use optimized script with build args for size control
+# Default: Keep Metasploit, remove heavy optional tools
+ARG INSTALL_METASPLOIT=true
+ARG INSTALL_NEO4J=true
+ARG INSTALL_EXPLOITDB=true
+ARG INSTALL_WORDLISTS=false
+ARG INSTALL_GO_TOOLS=true
+ENV INSTALL_METASPLOIT=$INSTALL_METASPLOIT
+ENV INSTALL_NEO4J=$INSTALL_NEO4J
+ENV INSTALL_EXPLOITDB=$INSTALL_EXPLOITDB
+ENV INSTALL_WORDLISTS=$INSTALL_WORDLISTS
+ENV INSTALL_GO_TOOLS=$INSTALL_GO_TOOLS
+RUN bash /ins/install_additional_optimized.sh $BRANCH
 
 # Cache buster: cleanup repo and re-install A0 without caching
 # This ensures clean installs and speeds up builds by purging caches

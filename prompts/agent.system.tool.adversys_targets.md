@@ -35,17 +35,20 @@ List all available targets.
 ### search
 Search for targets by value, name, or type.
 
+**IMPORTANT**: The search operation searches in both the target **name** and **value** (IP address) fields. For example, searching for "192.168.10.10" will find targets with that IP address, and searching for "GOAD-DC01" will find targets with that name.
+
 **Parameters:**
 - `operation`: "search"
-- `query` (optional): Search in target value (e.g., "adversys.ai")
-- `name` (optional): Search in target name
+- `query` (optional): Search in both target name and value (IP address). For example, "192.168.10.10" or "GOAD-DC01"
+- `name` (optional): Search specifically in target name
 - `type` (optional): Filter by target type ("domain", "ip_address", "cidr", etc.)
 
 **Example:**
 ```
 operation: search
-query: "adversys.ai"
+query: "192.168.10.10"
 ```
+This will find targets where the name or IP address contains "192.168.10.10".
 
 ### get
 Get detailed information about a specific target.
