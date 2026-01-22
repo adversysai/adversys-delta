@@ -129,13 +129,37 @@ class AdversysAPIClient:
         Returns:
             API key string, or empty string if not found
         """
-        # Master key file path (should be stored separately from encrypted credentials)
-        MASTER_KEY_FILE = "/etc/adversys/core/master-key"
-        ENCRYPTED_CREDENTIALS_DIR = "/etc/adversys/core/encrypted"
-        ENCRYPTED_API_KEY_FILE = f"{ENCRYPTED_CREDENTIALS_DIR}/adversys-api-key.enc"
+        # Master key file paths (check both production and dev paths)
+        MASTER_KEY_FILES = [
+            "/etc/adversys/core/master-key",  # Production path
+            "/var/lib/adversys/core/config/master-key",  # Dev path (for Docker Compose)
+        ]
         
-        # Check if encrypted files exist
-        if not os.path.exists(MASTER_KEY_FILE) or not os.path.exists(ENCRYPTED_API_KEY_FILE):
+        # Encrypted credentials directory paths (check both production and dev paths)
+        ENCRYPTED_CREDENTIALS_DIRS = [
+            "/etc/adversys/core/encrypted",  # Production path
+            "/var/lib/adversys/core/config/encrypted",  # Dev path (for Docker Compose)
+        ]
+        
+        # Try each combination of master key and encrypted directory
+        MASTER_KEY_FILE = None
+        ENCRYPTED_API_KEY_FILE = None
+        
+        for master_key_file in MASTER_KEY_FILES:
+            for encrypted_dir in ENCRYPTED_CREDENTIALS_DIRS:
+                encrypted_api_key_file = f"{encrypted_dir}/adversys-api-key.enc"
+                
+                # Check if both files exist
+                if os.path.exists(master_key_file) and os.path.exists(encrypted_api_key_file):
+                    # Use these paths for decryption
+                    MASTER_KEY_FILE = master_key_file
+                    ENCRYPTED_API_KEY_FILE = encrypted_api_key_file
+                    break
+            if MASTER_KEY_FILE and ENCRYPTED_API_KEY_FILE:
+                break
+        
+        # If no valid combination found, return empty
+        if not MASTER_KEY_FILE or not ENCRYPTED_API_KEY_FILE:
             return ""
         
         # Try to import cryptography
@@ -178,11 +202,11 @@ class AdversysAPIClient:
             decrypted_data = fernet.decrypt(encrypted_data)
             api_key = decrypted_data.decode('utf-8')
             
-            PrintStyle().info("Loaded API key from encrypted files")
+            PrintStyle().info(f"Loaded API key from encrypted files ({ENCRYPTED_API_KEY_FILE})")
             return api_key
             
         except Exception as e:
-            PrintStyle().debug(f"Could not decrypt API key from encrypted files: {e}")
+            PrintStyle().debug(f"Could not decrypt API key from encrypted files ({ENCRYPTED_API_KEY_FILE}): {e}")
             return ""
     
     def _ensure_session(self) -> bool:
