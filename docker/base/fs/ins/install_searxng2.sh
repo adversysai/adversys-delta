@@ -23,7 +23,7 @@ source "/usr/local/searxng/searx-pyenv/bin/activate"
 echo "====================SEARXNG2 INST===================="
 
 # update pip's boilerplate
-pip install --no-cache-dir -U pip setuptools wheel pyyaml lxml
+pip install --no-cache-dir -U pip setuptools wheel pyyaml lxml typing_extensions
 
 # jump to SearXNG's working tree
 cd "/usr/local/searxng/searxng-src"
